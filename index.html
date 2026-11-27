@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Happy Toonzz — Character Lookbook &amp; Reference Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-cream: #fff9f5;
+      --bg-soft: #fff2f7;
+      --surface: #ffffff;
+      --surface-tint: #fef7fb;
+      --ink: #382334;
+      --ink-muted: #72596c;
+      --border: #f2dce7;
+      --pink: #f58ec0;
+      --pink-soft: #ffe3f0;
+      --blue: #78cbf2;
+      --blue-soft: #dff4ff;
+      --yellow: #f9cc66;
+      --yellow-soft: #fff3cf;
+      --purple: #a882f6;
+      --purple-soft: #efe7ff;
+      --coral: #fb8281;
+      --shadow-sm: 0 6px 18px rgba(132, 82, 114, 0.08);
+      --shadow-md: 0 14px 36px rgba(132, 82, 114, 0.12);
+      --shadow-lg: 0 24px 56px rgba(74, 42, 68, 0.22);
+      --radius-lg: 28px;
+      --radius-md: 20px;
+      --radius-pill: 999px;
+      --font-display: 'Fredoka', 'Segoe UI Rounded', ui-rounded, 'Nunito', system-ui, sans-serif;
+      --font-body: 'Nunito', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-body);
+      color: var(--ink);
+      background-color: var(--bg-cream);
+      background-image:
+        radial-gradient(circle at 8% 6%, rgba(245, 142, 192, 0.22) 0%, transparent 32%),
+        radial-gradient(circle at 92% 10%, rgba(120, 203, 242, 0.22) 0%, transparent 34%),
+        radial-gradient(circle at 82% 56%, rgba(249, 204, 102, 0.18) 0%, transparent 36%),
+        radial-gradient(circle at 12% 76%, rgba(168, 130, 246, 0.15) 0%, transparent 35%);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    img {
+      display: block;
+      max-width: 100%;
+    }
+
+    button, a {
+      font-family: inherit;
+    }
+
+    .container {
+      width: min(1200px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* Sticky Navbar */
+    .navbar {
+      position: sticky;
+      top: 12px;
+      z-index: 40;
+      margin: 12px auto 0;
+      width: min(1200px, calc(100% - 32px));
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1.5px solid rgba(242, 220, 231, 0.9);
+      border-radius: var(--radius-pill);
+      box-shadow: var(--shadow-sm);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--ink);
+    }
+
+    .brand-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      box-shadow: 0 6px 14px rgba(168, 130, 246, 0.32);
+      flex-shrink: 0;
+    }
+
+    .brand-text strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 1.12rem;
+      line-height: 1.1;
+      letter-spacing: 0.01em;
+    }
+
+    .brand-text span {
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--ink-muted);
+      letter-spacing: 0.03em;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--ink-muted);
+      font-weight: 700;
+      font-size: 0.92rem;
+      padding: 8px 14px;
+      border-radius: var(--radius-pill);
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      background: var(--pink-soft);
+      color: var(--ink);
+    }
+
+    .btn {
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 800;
+      font-size: 0.92rem;
+      border-radius: var(--radius-pill);
+      padding: 11px 20px;
+      text-decoration: none;
+      transition: transform 0.18s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #f47cb6, #9b73f2);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(168, 130, 246, 0.32);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px rgba(168, 130, 246, 0.42);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--ink);
+      border: 1.5px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      background: var(--surface-tint);
+    }
+
+    /* Hero Section */
+    .hero {
+      padding: 42px 0 36px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .pill-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      color: #8b4c77;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 0.84rem;
+      font-weight: 800;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 16px;
+    }
+
+    .pill-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink), var(--yellow));
+    }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.15rem, 4.4vw, 3.35rem);
+      line-height: 1.08;
+      margin-bottom: 16px;
+      color: var(--ink);
+    }
+
+    .hero h1 .accent {
+      background: linear-gradient(120deg, #e85ca3, #8f64eb 60%, #43ace0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero-desc {
+      font-size: 1.06rem;
+      color: var(--ink-muted);
+      max-width: 54ch;
+      margin-bottom: 24px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 500px;
+    }
+
+    .stat-box {
+      background: rgba(255, 255, 255, 0.85);
+      border: 1.5px solid var(--border);
+      border-radius: 18px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-box strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 1.35rem;
+      color: var(--ink);
+      line-height: 1.15;
+    }
+
+    .stat-box span {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--ink-muted);
+    }
+
+    /* Hero Spotlight Deck */
+    .spotlight-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 32px;
+      padding: 18px;
+      box-shadow: var(--shadow-md);
+      position: relative;
+    }
+
+    .spotlight-frame {
+      position: relative;
+      border-radius: 24px;
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+      background: var(--bg-soft);
+      cursor: pointer;
+    }
+
+    .spotlight-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.45s ease, opacity 0.28s ease;
+    }
+
+    .spotlight-frame:hover img {
+      transform: scale(1.03);
+    }
+
+    .spotlight-overlay {
+      position: absolute;
+      inset: auto 14px 14px 14px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.95);
+      border-radius: 18px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .spotlight-overlay h3 {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      line-height: 1.2;
+    }
+
+    .spotlight-overlay p {
+      font-size: 0.8rem;
+      color: var(--ink-muted);
+      font-weight: 700;
+    }
+
+    .spotlight-thumbs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .thumb-btn {
+      border: 2px solid transparent;
+      background: var(--surface-tint);
+      border-radius: 16px;
+      padding: 4px;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    .thumb-btn img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: 11px;
+    }
+
+    .thumb-btn span {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--ink-muted);
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .thumb-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .thumb-btn.active {
+      border-color: var(--purple);
+      background: var(--purple-soft);
+      box-shadow: 0 6px 14px rgba(168, 130, 246, 0.22);
+    }
+
+    .thumb-btn.active span {
+      color: var(--ink);
+    }
+
+    /* Section Headings */
+    section {
+      padding: 36px 0;
+    }
+
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .section-kicker {
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #a65c8e;
+      margin-bottom: 4px;
+    }
+
+    .section-head h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.65rem, 3vw, 2.25rem);
+      line-height: 1.15;
+    }
+
+    .section-head p {
+      color: var(--ink-muted);
+      max-width: 56ch;
+      margin-top: 6px;
+      font-size: 0.98rem;
+    }
+
+    /* Filter Chips */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-chip {
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--ink-muted);
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      font-weight: 800;
+      font-size: 0.86rem;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .filter-chip:hover {
+      border-color: var(--pink);
+      color: var(--ink);
+    }
+
+    .filter-chip.active {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Gallery Cards Grid */
+    .looks-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .look-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
+    }
+
+    .look-card:hover {
+      transform: translateY(-6px);
+      box-shadow: var(--shadow-md);
+      border-color: #e9bed3;
+    }
+
+    .look-card.hidden {
+      display: none;
+    }
+
+    .look-media {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      background: var(--surface-tint);
+      cursor: pointer;
+    }
+
+    .look-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .look-card:hover .look-media img {
+      transform: scale(1.05);
+    }
+
+    .look-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 0.76rem;
+      font-weight: 800;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .fav-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.92);
+      color: #b79ab0;
+      font-size: 1.05rem;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: transform 0.18s ease, color 0.18s ease, background 0.18s ease;
+    }
+
+    .fav-btn:hover {
+      transform: scale(1.1);
+    }
+
+    .fav-btn.liked {
+      color: #ef4d84;
+      background: #fff0f6;
+    }
+
+    .look-body {
+      padding: 16px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .look-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .look-body h3 {
+      font-family: var(--font-display);
+      font-size: 1.18rem;
+      line-height: 1.2;
+    }
+
+    .swatches-mini {
+      display: flex;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .swatches-mini span {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 1px solid rgba(56, 35, 52, 0.14);
+    }
+
+    .look-desc {
+      font-size: 0.88rem;
+      color: var(--ink-muted);
+      margin-bottom: 14px;
+      flex: 1;
+    }
+
+    .look-actions {
+      display: flex;
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+    }
+
+    .btn-sm {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      border-radius: 12px;
+    }
+
+    /* Reference Sheet Explorer */
+    .sheet-panel {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 32px;
+      padding: 24px;
+      box-shadow: var(--shadow-md);
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .sheet-viewer {
+      position: relative;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+      background: #fdf6ef;
+      cursor: zoom-in;
+    }
+
+    .sheet-viewer img {
+      width: 100%;
+      height: auto;
+      transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+      transform-origin: 50% 50%;
+    }
+
+    .sheet-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .zoom-chip {
+      border: 1.5px solid var(--border);
+      background: var(--surface-tint);
+      color: var(--ink);
+      border-radius: var(--radius-pill);
+      padding: 7px 14px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .zoom-chip:hover {
+      background: var(--blue-soft);
+      border-color: var(--blue);
+    }
+
+    .zoom-chip.active {
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .sheet-info {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .info-card {
+      background: var(--surface-tint);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+
+    .info-card h4 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-card p {
+      font-size: 0.87rem;
+      color: var(--ink-muted);
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .mini-tag {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      padding: 4px 10px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    /* Color Palette */
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .swatch-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 22px;
+      padding: 12px;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      text-align: left;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .swatch-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .swatch-color {
+      width: 100%;
+      height: 74px;
+      border-radius: 14px;
+      border: 1px solid rgba(56, 35, 52, 0.08);
+      margin-bottom: 10px;
+    }
+
+    .swatch-card strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      line-height: 1.2;
+    }
+
+    .swatch-card span {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--ink-muted);
+      margin-top: 2px;
+    }
+
+    /* Lightbox Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(33, 18, 31, 0.72);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-box {
+      background: var(--surface);
+      border-radius: 28px;
+      width: min(1040px, 100%);
+      max-height: 92vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-lg);
+      border: 2px solid var(--border);
+    }
+
+    .modal-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1.5px solid var(--border);
+      background: var(--surface-tint);
+    }
+
+    .modal-topbar h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+    }
+
+    .modal-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .icon-btn {
+      border: 1.5px solid var(--border);
+      background: var(--surface);
+      color: var(--ink);
+      height: 36px;
+      padding: 0 12px;
+      border-radius: var(--radius-pill);
+      font-weight: 800;
+      font-size: 0.82rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+
+    .icon-btn:hover {
+      background: var(--pink-soft);
+    }
+
+    .icon-btn.active {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+
+    .modal-content {
+      display: grid;
+      grid-template-columns: 1fr;
+      overflow-y: auto;
+      padding: 20px;
+      gap: 18px;
+      background: #fffdfb;
+    }
+
+    .modal-content.compare-mode {
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+    }
+
+    .modal-stage {
+      background: var(--bg-soft);
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+      display: grid;
+      place-items: center;
+      max-height: 62vh;
+    }
+
+    .modal-stage img {
+      max-height: 62vh;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    .compare-box {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .modal-content.compare-mode .compare-box {
+      display: flex;
+    }
+
+    .compare-label {
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .modal-caption {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 4px 0;
+    }
+
+    .modal-caption p {
+      color: var(--ink-muted);
+      font-size: 0.94rem;
+      max-width: 72ch;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: var(--radius-pill);
+      font-weight: 800;
+      font-size: 0.86rem;
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      z-index: 200;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    footer {
+      padding: 28px 0 44px;
+      text-align: center;
+      color: var(--ink-muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 1080px) {
+      .looks-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .palette-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .sheet-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+      .nav-links {
+        display: none;
+      }
+      .modal-content.compare-mode {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .looks-grid {
+        grid-template-columns: 1fr;
+      }
+      .palette-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .hero-stats {
+        grid-template-columns: repeat(3, 1fr);
+      }
+      .spotlight-thumbs {
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="navbar" aria-label="Primary Navigation">
+    <a class="brand" href="#top">
+      <div class="brand-badge" aria-hidden="true">&#10024;</div>
+      <div class="brand-text">
+        <strong>Happy Toonzz</strong>
+        <span>Character Lookbook</span>
+      </div>
+    </a>
+    <div class="nav-links">
+      <a href="#looks">Different Looks</a>
+      <a href="#sheet">Character Sheet</a>
+      <a href="#palette">Color Palette</a>
+    </div>
+    <button class="btn btn-primary" id="openSlideshowBtn" type="button">
+      &#9654; Slideshow
+    </button>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero container" id="top">
+    <div class="hero-grid">
+      <div>
+        <div class="pill-tag">
+          <span class="pill-dot"></span>
+          Our Little Happy Friend &bull; Character Gallery
+        </div>
+        <h1>
+          Meet <span class="accent">Happy Toonzz</span> in Different Looks
+        </h1>
+        <p class="hero-desc">
+          Inspired directly by your original character sheet — preserving the fluffy white face,
+          pastel pink tuft, sparkling purple eyes, rosy cheeks, and pastel rainbow fur across
+          four brand-new 3D CGI outfit adventures.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#looks">Explore All 4 Looks</a>
+          <a class="btn btn-secondary" href="#sheet">Inspect Reference Sheet</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-box">
+            <strong>4 Looks</strong>
+            <span>Custom 3D Outfits</span>
+          </div>
+          <div class="stat-box">
+            <strong>1024px</strong>
+            <span>Studio Resolution</span>
+          </div>
+          <div class="stat-box">
+            <strong>6 Tones</strong>
+            <span>Signature Palette</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Spotlight Preview -->
+      <div class="spotlight-card">
+        <div class="spotlight-frame" id="heroFrame" role="button" tabindex="0" aria-label="Inspect featured character look">
+          <img id="heroPreviewImg" src="images/look-superhero.jpg" alt="Happy Toonzz Superhero Look" />
+          <div class="spotlight-overlay">
+            <div>
+              <h3 id="heroPreviewTitle">Superhero Look</h3>
+              <p id="heroPreviewSub">Coral cape, golden star tunic &amp; sky clouds</p>
+            </div>
+            <span class="btn btn-primary btn-sm" style="flex: 0 0 auto;">Zoom</span>
+          </div>
+        </div>
+        <div class="spotlight-thumbs" id="heroThumbs">
+          <button class="thumb-btn active" type="button" data-index="0">
+            <img src="images/look-superhero.jpg" alt="Superhero thumbnail" />
+            <span>Superhero</span>
+          </button>
+          <button class="thumb-btn" type="button" data-index="1">
+            <img src="images/look-astronaut.jpg" alt="Astronaut thumbnail" />
+            <span>Astronaut</span>
+          </button>
+          <button class="thumb-btn" type="button" data-index="2">
+            <img src="images/look-winter.jpg" alt="Winter thumbnail" />
+            <span>Winter</span>
+          </button>
+          <button class="thumb-btn" type="button" data-index="3">
+            <img src="images/look-chef.jpg" alt="Pastry Chef thumbnail" />
+            <span>Pastry Chef</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Looks Gallery -->
+  <section class="container" id="looks">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Character Wardrobe</div>
+        <h2>Different Look Images</h2>
+        <p>Click any look to zoom in, compare side-by-side against your reference sheet, or download the full 1024&times;1024 render.</p>
+      </div>
+      <div class="filter-bar" role="group" aria-label="Filter character looks">
+        <button class="filter-chip active" type="button" data-filter="all">All Looks (4)</button>
+        <button class="filter-chip" type="button" data-filter="adventure">Adventure</button>
+        <button class="filter-chip" type="button" data-filter="cozy">Cozy &amp; Sweet</button>
+        <button class="filter-chip" type="button" data-filter="favorites">Favorites (<span id="favCount">0</span>)</button>
+      </div>
+    </div>
+
+    <div class="looks-grid" id="looksGrid">
+      <!-- Card 1: Superhero -->
+      <article class="look-card" data-index="0" data-category="adventure">
+        <div class="look-media" onclick="openLightbox(0)">
+          <img src="images/look-superhero.jpg" alt="Happy Toonzz dressed in Superhero Look" loading="lazy" />
+          <span class="look-badge">Adventure</span>
+          <button class="fav-btn" type="button" aria-label="Favorite Superhero Look" data-id="superhero">&#9829;</button>
+        </div>
+        <div class="look-body">
+          <div class="look-title-row">
+            <h3>Superhero Look</h3>
+            <div class="swatches-mini" title="Outfit colors">
+              <span style="background:#fb8281"></span>
+              <span style="background:#78cbf2"></span>
+              <span style="background:#f9cc66"></span>
+            </div>
+          </div>
+          <p class="look-desc">
+            Coral-red and gold cape, pastel-blue star tunic, golden star belt buckle, and domino mask framing the signature purple eyes.
+          </p>
+          <div class="look-actions">
+            <button class="btn btn-primary btn-sm" type="button" onclick="openLightbox(0)">Inspect</button>
+            <a class="btn btn-secondary btn-sm" href="images/look-superhero.jpg" download="happy-toonzz-superhero.jpg">Save JPG</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 2: Astronaut -->
+      <article class="look-card" data-index="1" data-category="adventure">
+        <div class="look-media" onclick="openLightbox(1)">
+          <img src="images/look-astronaut.jpg" alt="Happy Toonzz dressed in Space Astronaut Look" loading="lazy" />
+          <span class="look-badge">Sci-Fi</span>
+          <button class="fav-btn" type="button" aria-label="Favorite Space Astronaut Look" data-id="astronaut">&#9829;</button>
+        </div>
+        <div class="look-body">
+          <div class="look-title-row">
+            <h3>Space Astronaut</h3>
+            <div class="swatches-mini" title="Outfit colors">
+              <span style="background:#ffffff"></span>
+              <span style="background:#a882f6"></span>
+              <span style="background:#f58ec0"></span>
+            </div>
+          </div>
+          <p class="look-desc">
+            Puffy white-and-pastel-blue space suit with planet patches, clear cat-ear bubble helmet, and pastel nebula stars behind.
+          </p>
+          <div class="look-actions">
+            <button class="btn btn-primary btn-sm" type="button" onclick="openLightbox(1)">Inspect</button>
+            <a class="btn btn-secondary btn-sm" href="images/look-astronaut.jpg" download="happy-toonzz-astronaut.jpg">Save JPG</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 3: Winter -->
+      <article class="look-card" data-index="2" data-category="cozy">
+        <div class="look-media" onclick="openLightbox(2)">
+          <img src="images/look-winter.jpg" alt="Happy Toonzz dressed in Cozy Winter Look" loading="lazy" />
+          <span class="look-badge">Cozy</span>
+          <button class="fav-btn" type="button" aria-label="Favorite Cozy Winter Look" data-id="winter">&#9829;</button>
+        </div>
+        <div class="look-body">
+          <div class="look-title-row">
+            <h3>Cozy Winter</h3>
+            <div class="swatches-mini" title="Outfit colors">
+              <span style="background:#f58ec0"></span>
+              <span style="background:#78cbf2"></span>
+              <span style="background:#fff3cf"></span>
+            </div>
+          </div>
+          <p class="look-desc">
+            Chunky knitted pink-and-cream pom-pom beanie, sky-blue striped scarf, knit vest, and striped mittens under glowing snowflakes.
+          </p>
+          <div class="look-actions">
+            <button class="btn btn-primary btn-sm" type="button" onclick="openLightbox(2)">Inspect</button>
+            <a class="btn btn-secondary btn-sm" href="images/look-winter.jpg" download="happy-toonzz-winter.jpg">Save JPG</a>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card 4: Pastry Chef -->
+      <article class="look-card" data-index="3" data-category="cozy">
+        <div class="look-media" onclick="openLightbox(3)">
+          <img src="images/look-chef.jpg" alt="Happy Toonzz dressed in Pastry Chef Look" loading="lazy" />
+          <span class="look-badge">Culinary</span>
+          <button class="fav-btn" type="button" aria-label="Favorite Pastry Chef Look" data-id="chef">&#9829;</button>
+        </div>
+        <div class="look-body">
+          <div class="look-title-row">
+            <h3>Pastry Chef</h3>
+            <div class="swatches-mini" title="Outfit colors">
+              <span style="background:#ffffff"></span>
+              <span style="background:#f58ec0"></span>
+              <span style="background:#fb8281"></span>
+            </div>
+          </div>
+          <p class="look-desc">
+            Pleated white chef toque, pastel polka-dot apron with strawberry pocket, wooden whisk, and a blue-frosted sprinkle cupcake.
+          </p>
+          <div class="look-actions">
+            <button class="btn btn-primary btn-sm" type="button" onclick="openLightbox(3)">Inspect</button>
+            <a class="btn btn-secondary btn-sm" href="images/look-chef.jpg" download="happy-toonzz-chef.jpg">Save JPG</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Original Reference Character Sheet Section -->
+  <section class="container" id="sheet">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Source Blueprint</div>
+        <h2>Original Character Sheet Explorer</h2>
+        <p>Use the focus buttons below to zoom into specific areas of your reference sheet, or click the image to inspect full-screen.</p>
+      </div>
+    </div>
+
+    <div class="sheet-panel">
+      <div>
+        <div class="sheet-viewer" onclick="openLightbox(4)" title="Click to open full Character Sheet">
+          <img id="sheetZoomImg" src="images/reference-sheet.jpg" alt="Happy Toonzz Original Reference Character Sheet" />
+        </div>
+        <div class="sheet-controls" role="group" aria-label="Zoom into character sheet regions">
+          <button class="zoom-chip active" type="button" data-origin="50% 50%" data-scale="1">Full Sheet</button>
+          <button class="zoom-chip" type="button" data-origin="17% 28%" data-scale="2.1">Main Look</button>
+          <button class="zoom-chip" type="button" data-origin="76% 24%" data-scale="1.85">Turnaround Views</button>
+          <button class="zoom-chip" type="button" data-origin="50% 56%" data-scale="1.85">Expressions</button>
+          <button class="zoom-chip" type="button" data-origin="26% 84%" data-scale="2.0">Pose Ideas</button>
+          <button class="zoom-chip" type="button" data-origin="84% 84%" data-scale="2.1">Details</button>
+        </div>
+      </div>
+
+      <div class="sheet-info">
+        <div class="info-card">
+          <h4>&#128062; Core Character Traits</h4>
+          <p>Cute, cheerful, and always happy. Ultra-soft 3D CGI plush fur with asymmetrical pastel limbs (pink arms, yellow right leg, sky-blue left leg) and pink paw pads.</p>
+        </div>
+        <div class="info-card">
+          <h4>&#128516; Sheet Expressions</h4>
+          <p>Five signature facial moods from your sheet:</p>
+          <div class="tag-list">
+            <span class="mini-tag">Happy</span>
+            <span class="mini-tag">Excited</span>
+            <span class="mini-tag">Surprised</span>
+            <span class="mini-tag">Winking</span>
+            <span class="mini-tag">Sad</span>
+          </div>
+        </div>
+        <div class="info-card">
+          <h4>&#129419; Turnaround &amp; Pose Guides</h4>
+          <p>Full 360&deg; consistency across Front, Side, Back, and 3/4 views plus playful action poses:</p>
+          <div class="tag-list">
+            <span class="mini-tag">Waving</span>
+            <span class="mini-tag">Jumping</span>
+            <span class="mini-tag">Thinking</span>
+            <span class="mini-tag">With Butterfly</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" type="button" onclick="openLightbox(4)">Open Full-Size Reference Sheet</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Signature Color Palette -->
+  <section class="container" id="palette">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Official Swatches</div>
+        <h2>Character Color Palette</h2>
+        <p>Click any color swatch from the reference sheet to copy its hex code.</p>
+      </div>
+    </div>
+
+    <div class="palette-grid">
+      <button class="swatch-card" type="button" data-hex="#FBF2F0">
+        <div class="swatch-color" style="background:#FBF2F0"></div>
+        <strong>White Fur</strong>
+        <span>#FBF2F0</span>
+      </button>
+      <button class="swatch-card" type="button" data-hex="#F7A6CA">
+        <div class="swatch-color" style="background:#F7A6CA"></div>
+        <strong>Pink</strong>
+        <span>#F7A6CA</span>
+      </button>
+      <button class="swatch-card" type="button" data-hex="#8AD2F4">
+        <div class="swatch-color" style="background:#8AD2F4"></div>
+        <strong>Blue</strong>
+        <span>#8AD2F4</span>
+      </button>
+      <button class="swatch-card" type="button" data-hex="#F9D174">
+        <div class="swatch-color" style="background:#F9D174"></div>
+        <strong>Yellow</strong>
+        <span>#F9D174</span>
+      </button>
+      <button class="swatch-card" type="button" data-hex="#B58AF5">
+        <div class="swatch-color" style="background:#B58AF5"></div>
+        <strong>Purple (Eyes)</strong>
+        <span>#B58AF5</span>
+      </button>
+      <button class="swatch-card" type="button" data-hex="#FA8A8A">
+        <div class="swatch-color" style="background:#FA8A8A"></div>
+        <strong>Nose / Inner Ears</strong>
+        <span>#FA8A8A</span>
+      </button>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      Happy Toonzz &bull; Small Character &hellip; Big Happiness!
+    </div>
+  </footer>
+
+  <!-- Lightbox Modal -->
+  <div class="modal-backdrop" id="lightbox" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <div class="modal-topbar">
+        <h3 id="modalTitle">Look Preview</h3>
+        <div class="modal-controls">
+          <button class="icon-btn" id="compareToggleBtn" type="button">Compare w/ Reference</button>
+          <button class="icon-btn" id="prevBtn" type="button" aria-label="Previous image">&larr; Prev</button>
+          <button class="icon-btn" id="nextBtn" type="button" aria-label="Next image">Next &rarr;</button>
+          <a class="icon-btn" id="modalDownload" href="#" download>Download</a>
+          <button class="icon-btn" id="closeModalBtn" type="button" aria-label="Close modal">&#10005; Close</button>
+        </div>
+      </div>
+      <div class="modal-content" id="modalContent">
+        <div class="modal-stage">
+          <img id="modalImg" src="" alt="" />
+        </div>
+        <div class="compare-box">
+          <span class="compare-label">Original Reference Sheet</span>
+          <div class="modal-stage">
+            <img src="images/reference-sheet.jpg" alt="Original Happy Toonzz Character Reference Sheet" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-caption" style="padding: 0 20px 18px;">
+        <p id="modalDesc"></p>
+        <span id="modalCounter" style="font-weight: 800; font-size: 0.84rem; color: var(--ink-muted);"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const LOOKS = [
+      {
+        id: 'superhero',
+        title: 'Superhero Look',
+        sub: 'Coral cape, golden star tunic & sky clouds',
+        src: 'images/look-superhero.jpg',
+        download: 'happy-toonzz-superhero.jpg',
+        desc: 'Happy Toonzz dressed in a vibrant coral-red and gold cape, pastel-blue tunic with golden star emblem and belt buckle, and matching domino mask against sunlit clouds.'
+      },
+      {
+        id: 'astronaut',
+        title: 'Space Astronaut',
+        sub: 'Cat-ear bubble helmet & pastel cosmos',
+        src: 'images/look-astronaut.jpg',
+        download: 'happy-toonzz-astronaut.jpg',
+        desc: 'Happy Toonzz floating happily in a puffy white-and-pastel-blue space suit with planet mission patches and a crystal-clear cat-ear bubble helmet inside a starry nebula.'
+      },
+      {
+        id: 'winter',
+        title: 'Cozy Winter',
+        sub: 'Knit pom-pom beanie, scarf & snowflakes',
+        src: 'images/look-winter.jpg',
+        download: 'happy-toonzz-winter.jpg',
+        desc: 'Happy Toonzz bundled up in a chunky pink-and-cream pom-pom beanie, sky-blue striped winter scarf, knitted vest, and mittens catching a shimmering snowflake.'
+      },
+      {
+        id: 'chef',
+        title: 'Pastry Chef',
+        sub: 'White chef toque, strawberry apron & cupcake',
+        src: 'images/look-chef.jpg',
+        download: 'happy-toonzz-chef.jpg',
+        desc: 'Happy Toonzz ready to bake in a pleated white chef hat and pastel polka-dot strawberry apron, holding a wooden whisk next to a sprinkled cupcake.'
+      },
+      {
+        id: 'reference',
+        title: 'Original Character Sheet',
+        sub: 'Happy Toonzz full turnaround & expression reference',
+        src: 'images/reference-sheet.jpg',
+        download: 'happy-toonzz-reference-sheet.jpg',
+        desc: 'Your original Happy Toonzz reference sheet featuring Main Look, Turnaround Views, Expressions, Pose Ideas, Color Palette, and fur/face details.'
+      }
+    ];
+
+    let currentIndex = 0;
+    let heroIndex = 0;
+    let storedFavs = [];
+    try {
+      storedFavs = JSON.parse(localStorage.getItem('happyToonzzFavs') || '[]');
+    } catch {
+      storedFavs = [];
+    }
+    const favorites = new Set(storedFavs);
+
+    const heroImg = document.getElementById('heroPreviewImg');
+    const heroTitle = document.getElementById('heroPreviewTitle');
+    const heroSub = document.getElementById('heroPreviewSub');
+    const heroFrame = document.getElementById('heroFrame');
+    const heroThumbs = document.querySelectorAll('.thumb-btn');
+
+    function setHero(index) {
+      heroIndex = index;
+      const item = LOOKS[index];
+      heroImg.style.opacity = '0.35';
+      setTimeout(() => {
+        heroImg.src = item.src;
+        heroImg.alt = 'Happy Toonzz ' + item.title;
+        heroTitle.textContent = item.title;
+        heroSub.textContent = item.sub;
+        heroImg.style.opacity = '1';
+      }, 110);
+      heroThumbs.forEach((btn, i) => btn.classList.toggle('active', i === index));
+    }
+
+    heroThumbs.forEach(btn => {
+      btn.addEventListener('click', () => setHero(Number(btn.dataset.index)));
+    });
+
+    heroFrame.addEventListener('click', () => openLightbox(heroIndex));
+    heroFrame.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openLightbox(heroIndex);
+      }
+    });
+
+    // Favorites management
+    const favCountEl = document.getElementById('favCount');
+    function syncFavoritesUI() {
+      favCountEl.textContent = favorites.size;
+      document.querySelectorAll('.fav-btn').forEach(btn => {
+        const liked = favorites.has(btn.dataset.id);
+        btn.classList.toggle('liked', liked);
+        btn.setAttribute('aria-pressed', liked ? 'true' : 'false');
+      });
+    }
+
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        if (favorites.has(id)) {
+          favorites.delete(id);
+          showToast('Removed from favorites');
+        } else {
+          favorites.add(id);
+          showToast('Added to favorites!');
+        }
+        try {
+          localStorage.setItem('happyToonzzFavs', JSON.stringify([...favorites]));
+        } catch {
+          // Ignore storage restrictions on local file origins
+        }
+        syncFavoritesUI();
+        applyCurrentFilter();
+      });
+    });
+    syncFavoritesUI();
+
+    // Filtering
+    let activeFilter = 'all';
+    const filterChips = document.querySelectorAll('.filter-chip');
+    const lookCards = document.querySelectorAll('.look-card');
+
+    function applyCurrentFilter() {
+      lookCards.forEach(card => {
+        const cat = card.dataset.category;
+        const id = card.querySelector('.fav-btn').dataset.id;
+        const match =
+          activeFilter === 'all' ||
+          (activeFilter === 'favorites' && favorites.has(id)) ||
+          cat === activeFilter;
+        card.classList.toggle('hidden', !match);
+      });
+    }
+
+    filterChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        activeFilter = chip.dataset.filter;
+        filterChips.forEach(c => c.classList.toggle('active', c === chip));
+        applyCurrentFilter();
+      });
+    });
+
+    // Reference sheet zoom controls
+    const sheetZoomImg = document.getElementById('sheetZoomImg');
+    document.querySelectorAll('.zoom-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.zoom-chip').forEach(c => c.classList.toggle('active', c === chip));
+        sheetZoomImg.style.transformOrigin = chip.dataset.origin;
+        sheetZoomImg.style.transform = `scale(${chip.dataset.scale})`;
+      });
+    });
+
+    // Palette copy to clipboard
+    document.querySelectorAll('.swatch-card').forEach(card => {
+      card.addEventListener('click', async () => {
+        const hex = card.dataset.hex;
+        try {
+          await navigator.clipboard.writeText(hex);
+          showToast(`Copied ${hex} to clipboard!`);
+        } catch {
+          showToast(`Color code: ${hex}`);
+        }
+      });
+    });
+
+    // Lightbox modal
+    const lightbox = document.getElementById('lightbox');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalImg = document.getElementById('modalImg');
+    const modalDesc = document.getElementById('modalDesc');
+    const modalCounter = document.getElementById('modalCounter');
+    const modalDownload = document.getElementById('modalDownload');
+    const modalContent = document.getElementById('modalContent');
+    const compareToggleBtn = document.getElementById('compareToggleBtn');
+    let compareOn = false;
+
+    function renderModal() {
+      const item = LOOKS[currentIndex];
+      modalTitle.textContent = item.title;
+      modalImg.src = item.src;
+      modalImg.alt = item.title;
+      modalDesc.textContent = item.desc;
+      modalDownload.href = item.src;
+      modalDownload.download = item.download;
+      modalCounter.textContent = `${currentIndex + 1} / ${LOOKS.length}`;
+      const disableCompare = item.id === 'reference';
+      compareToggleBtn.style.display = disableCompare ? 'none' : 'inline-flex';
+      modalContent.classList.toggle('compare-mode', compareOn && !disableCompare);
+    }
+
+    function openLightbox(index) {
+      currentIndex = index;
+      renderModal();
+      lightbox.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('openSlideshowBtn').addEventListener('click', () => openLightbox(0));
+    document.getElementById('closeModalBtn').addEventListener('click', closeLightbox);
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + LOOKS.length) % LOOKS.length;
+      renderModal();
+    });
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % LOOKS.length;
+      renderModal();
+    });
+
+    compareToggleBtn.addEventListener('click', () => {
+      compareOn = !compareOn;
+      compareToggleBtn.classList.toggle('active', compareOn);
+      renderModal();
+    });
+
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (!lightbox.classList.contains('open')) return;
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') {
+        currentIndex = (currentIndex - 1 + LOOKS.length) % LOOKS.length;
+        renderModal();
+      }
+      if (e.key === 'ArrowRight') {
+        currentIndex = (currentIndex + 1) % LOOKS.length;
+        renderModal();
+      }
+    });
+
+    // Toast helper
+    const toast = document.getElementById('toast');
+    let toastTimer;
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+  </script>
+</body>
+</html>
