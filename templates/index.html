@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ channel.channel_name }} — Official Channel Hub &amp; Character Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <nav class="navbar" aria-label="Primary Navigation">
+    <a class="brand" href="#top">
+      <div class="brand-badge">
+        <img src="/assets/sprites/expr_happy.png" alt="Happy Toonzz Mascot" />
+      </div>
+      <div class="brand-text">
+        <strong>{{ channel.channel_name }}</strong>
+        <span>{{ channel.location }} &bull; Official Hub</span>
+      </div>
+    </a>
+
+    <div class="nav-links">
+      <a href="#channel">Channel Stats</a>
+      <a href="#looks">Looks ({{ looks|length }})</a>
+      <a href="#song">Theme Song</a>
+      <a href="#sheet">Sheet</a>
+      <a href="#palette">Palette</a>
+      <a href="#contact">Contact</a>
+    </div>
+
+    <div class="nav-actions">
+      <button class="btn btn-secondary" id="openSlideshowBtn" type="button">&#9654; Slideshow</button>
+      {% if admin %}
+        <a class="user-chip" href="/admin">&#10024; AI &amp; Admin Studio ({{ admin.username }})</a>
+        <form action="/logout" method="post" style="display:inline;">
+          <button class="btn btn-secondary" type="submit">Logout</button>
+        </form>
+      {% else %}
+        <a class="btn btn-primary" href="/login">Admin Login</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero container" id="top">
+    <div class="hero-grid">
+      <div>
+        <div class="pill-tag">
+          <span class="pill-dot"></span>
+          {{ channel.tagline }}
+        </div>
+        <h1>
+          Welcome to <span class="accent">{{ channel.channel_name }}</span> World
+        </h1>
+        <p class="hero-desc">
+          {{ channel.bio }}
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="{{ channel.youtube_url }}" target="_blank" rel="noopener noreferrer">
+            &#9654; YouTube ({{ channel.youtube_handle }})
+          </a>
+          {% if channel.instagram_url %}
+          <a class="btn btn-secondary" href="{{ channel.instagram_url }}" target="_blank" rel="noopener noreferrer">
+            &#128247; Instagram ({{ channel.instagram_handle }})
+          </a>
+          {% endif %}
+          <a class="btn btn-secondary" href="#looks">Explore {{ looks|length }} Looks</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-box">
+            <strong>{{ channel.youtube_subs or 'Live' }}</strong>
+            <span>YouTube Subscribers</span>
+          </div>
+          <div class="stat-box">
+            <strong>{{ channel.youtube_videos or '190+' }}</strong>
+            <span>Published Videos</span>
+          </div>
+          <div class="stat-box">
+            <strong>{{ looks|length }} Looks</strong>
+            <span>3D Mascot Outfits</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Spotlight Preview -->
+      <div class="spotlight-card">
+        <div class="spotlight-frame" id="heroFrame" role="button" tabindex="0" aria-label="Inspect featured character look">
+          <img id="heroPreviewImg" src="/{{ looks[0].image_path }}" alt="{{ looks[0].title }}" />
+          <div class="spotlight-overlay">
+            <div>
+              <h3 id="heroPreviewTitle">{{ looks[0].title }}</h3>
+              <p id="heroPreviewSub">{{ looks[0].subtitle }}</p>
+            </div>
+            <span class="btn btn-primary btn-sm" style="flex:0 0 auto;">Zoom</span>
+          </div>
+        </div>
+        <div class="spotlight-thumbs" id="heroThumbs">
+          {% for look in looks[:4] %}
+          <button class="thumb-btn {{ 'active' if loop.index0 == 0 else '' }}" type="button" data-index="{{ loop.index0 }}">
+            <img src="/{{ look.image_path }}" alt="{{ look.title }} thumbnail" />
+            <span>{{ look.title }}</span>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Official Channel & Social Hub -->
+  <section class="container" id="channel">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Channel Info &bull; {{ channel.location }}</div>
+        <h2>Official Social Channels &amp; Community</h2>
+        <p>Follow Happy Toonzz across platforms. Log into the Admin Studio to update follower numbers or ask your AI Assistant anytime.</p>
+      </div>
+      {% if admin %}
+        <a class="btn btn-primary" href="/admin">Open AI &amp; Admin Studio</a>
+      {% else %}
+        <a class="btn btn-secondary" href="/login?next=/admin">Master Admin Login</a>
+      {% endif %}
+    </div>
+
+    <div class="social-grid">
+      <article class="social-card">
+        <div class="social-top">
+          <h3>YouTube</h3>
+          <span class="platform-pill platform-yt">{{ channel.youtube_handle }}</span>
+        </div>
+        <p style="font-size:0.88rem; color:var(--ink-muted);">
+          3D animated moral tales, bilingual Tamil &amp; English kindness shorts, learning songs &amp; livestreams.
+        </p>
+        <div class="social-metrics">
+          <div class="metric-box">
+            <strong>{{ channel.youtube_subs or '—' }}</strong>
+            <span>Subscribers</span>
+          </div>
+          <div class="metric-box">
+            <strong>{{ channel.youtube_videos or '—' }}</strong>
+            <span>Videos &amp; Shorts</span>
+          </div>
+        </div>
+        <a class="btn btn-primary" href="{{ channel.youtube_url }}" target="_blank" rel="noopener noreferrer">Visit YouTube Channel</a>
+      </article>
+
+      <article class="social-card">
+        <div class="social-top">
+          <h3>Instagram</h3>
+          <span class="platform-pill platform-ig">{{ channel.instagram_handle or '@happy_toonzz' }}</span>
+        </div>
+        <p style="font-size:0.88rem; color:var(--ink-muted);">
+          Reels, character look drops, Tamil positivity quotes, and behind-the-scenes mascot updates.
+        </p>
+        <div class="social-metrics">
+          <div class="metric-box">
+            <strong>{{ channel.instagram_followers or 'Active' }}</strong>
+            <span>{{ 'Followers' if channel.instagram_followers else 'Set exact count in Admin' }}</span>
+          </div>
+          <div class="metric-box">
+            <strong>Reels</strong>
+            <span>Short Animations</span>
+          </div>
+        </div>
+        <a class="btn btn-secondary" href="{{ channel.instagram_url or 'https://www.instagram.com/happy_toonzz/' }}" target="_blank" rel="noopener noreferrer">Open Instagram Profile</a>
+      </article>
+
+      <article class="social-card">
+        <div class="social-top">
+          <h3>Facebook</h3>
+          <span class="platform-pill platform-fb">{{ channel.facebook_handle or 'Happy Toonzz Page' }}</span>
+        </div>
+        <p style="font-size:0.88rem; color:var(--ink-muted);">
+          Family-friendly cartoon stories, community posts, and Tamil song shares for parents and kids.
+        </p>
+        <div class="social-metrics">
+          <div class="metric-box">
+            <strong>{{ channel.facebook_followers or 'Pending' }}</strong>
+            <span>{{ 'Followers' if channel.facebook_followers else 'Link in Admin Studio' }}</span>
+          </div>
+          <div class="metric-box">
+            <strong>Community</strong>
+            <span>Family Audience</span>
+          </div>
+        </div>
+        {% if channel.facebook_url %}
+          <a class="btn btn-secondary" href="{{ channel.facebook_url }}" target="_blank" rel="noopener noreferrer">Open Facebook Page</a>
+        {% else %}
+          <a class="btn btn-secondary" href="/login?next=/admin">Link Facebook in Studio</a>
+        {% endif %}
+      </article>
+    </div>
+
+    <div class="pillars-grid">
+      <div class="pillar-card">
+        <h4>&#10084;&#65039; Kindness &amp; Tamil Shorts</h4>
+        <p>Heartwarming Tamil &amp; English quotes showing how small acts of help bring big joy (<em>#KindnessMatters #TamilMotivation</em>).</p>
+      </div>
+      <div class="pillar-card">
+        <h4>&#128214; Moral &amp; Bedtime Stories</h4>
+        <p>Sweet, positive 3D animated tales crafted for kids and families to learn caring, honesty, and friendship.</p>
+      </div>
+      <div class="pillar-card">
+        <h4>&#127925; Kids Learning &amp; Theme Songs</h4>
+        <p>Cheerful sing-along songs including our Tamil celebration anthem <strong>"உலகம் சிரிக்கட்டும்"</strong>.</p>
+      </div>
+      <div class="pillar-card">
+        <h4>&#128062; Mascot Adventures</h4>
+        <p>One lovable white pastel rainbow kitten jumping across Superhero, Space, Winter, and Chef stories.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Looks Gallery -->
+  <section class="container" id="looks">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Character Wardrobe</div>
+        <h2>Happy Toonzz Character Looks</h2>
+        <p>Click any look to zoom in, compare against the original character sheet, download, or save favorites on your device.</p>
+      </div>
+      <div class="filter-bar" role="group" aria-label="Filter character looks">
+        <button class="filter-chip active" type="button" data-filter="all">All Looks ({{ looks|length }})</button>
+        <button class="filter-chip" type="button" data-filter="adventure">Adventure</button>
+        <button class="filter-chip" type="button" data-filter="cozy">Cozy &amp; Sweet</button>
+        <button class="filter-chip" type="button" data-filter="favorites">Favorites (<span id="favCount">0</span>)</button>
+      </div>
+    </div>
+
+    <div class="looks-grid" id="looksGrid">
+      {% for look in looks %}
+      <article class="look-card" data-index="{{ loop.index0 }}" data-look-id="{{ look.id }}" data-category="{{ look.category }}">
+        <div class="look-media" onclick="openLightbox({{ loop.index0 }})">
+          <img src="/{{ look.image_path }}" alt="{{ look.title }}" loading="lazy" />
+          <span class="look-badge">{{ look.badge }}</span>
+          <button class="fav-btn" type="button" aria-label="Favorite {{ look.title }}" data-id="{{ look.id }}">&#9829;</button>
+        </div>
+        <div class="look-body">
+          <div class="look-title-row">
+            <h3>{{ look.title }}</h3>
+            <div class="swatches-mini">
+              {% for hex in look.swatches %}
+                <span style="background:{{ hex }}"></span>
+              {% endfor %}
+            </div>
+          </div>
+          <p class="look-desc">{{ look.description }}</p>
+          <div class="look-actions">
+            <button class="btn btn-primary btn-sm" type="button" onclick="openLightbox({{ loop.index0 }})">Inspect</button>
+            <a class="btn btn-secondary btn-sm" href="/{{ look.image_path }}" download="{{ look.slug }}.jpg">Save</a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Theme Song & Live Synced Lyrics Studio -->
+  <section class="container" id="song">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Verified Audio &amp; Full Tamil Lyrics (2:34)</div>
+        <h2>உலகம் சிரிக்கட்டும் — Theme Song &amp; Live Lyrics</h2>
+        <p>Play the theme song and watch each Tamil, Tanglish, and English line highlight in real time. Click any line to jump straight to that moment.</p>
+      </div>
+    </div>
+
+    <div class="song-panel">
+      <div class="player-stage">
+        <div class="poster-frame">
+          {% if has_ref_video %}
+            <video id="songPlayer" controls playsinline preload="metadata" poster="/images/look-superhero.jpg">
+              <source src="/assets/reference-video.mp4" type="video/mp4" />
+            </video>
+          {% else %}
+            <img src="/images/reference-sheet.jpg" alt="Happy Toonzz Theme Song Cover" />
+          {% endif %}
+        </div>
+        <div class="audio-controls-card">
+          <strong style="font-family:var(--font-display);">Happy Toonzz Kondaattam (Full Audio)</strong>
+          <p style="font-size:0.84rem; color:var(--ink-muted);">154.46s &bull; Tamil &amp; Tanglish sing-along track</p>
+          {% if not has_ref_video %}
+            <audio id="songPlayer" controls preload="metadata">
+              <source src="/assets/reference-audio.m4a" type="audio/mp4" />
+            </audio>
+          {% else %}
+            <div style="margin-top:8px;">
+              <a class="btn btn-secondary btn-sm" href="/assets/reference-audio.m4a" download="happy-toonzz-theme.m4a">Download Theme Audio (.m4a)</a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="lyrics-box" id="lyricsBox" aria-label="Synchronized Lyrics">
+        {% for line in lyrics %}
+        <button
+          class="lyric-line"
+          type="button"
+          data-start="{{ line.start_sec }}"
+          data-end="{{ line.end_sec }}"
+          onclick="seekSong({{ line.start_sec }})"
+        >
+          <div class="lyric-meta">
+            <span>{{ line.section }}</span>
+            <span>{{ "%.1f"|format(line.start_sec) }}s &ndash; {{ "%.1f"|format(line.end_sec) }}s</span>
+          </div>
+          <div class="lyric-ta">{{ line.tamil }}</div>
+          <div class="lyric-en">{{ line.tanglish }} &bull; {{ line.english }}</div>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Reference Character Sheet Section -->
+  <section class="container" id="sheet">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Source Blueprint</div>
+        <h2>Original Character Sheet Explorer</h2>
+        <p>Zoom into the mascot turnaround views, signature expressions, or pose guides.</p>
+      </div>
+    </div>
+
+    <div class="sheet-panel">
+      <div>
+        <div class="sheet-viewer" onclick="openReferenceModal()" title="Click to open full Character Sheet">
+          <img id="sheetZoomImg" src="/images/reference-sheet.jpg" alt="Happy Toonzz Original Reference Character Sheet" />
+        </div>
+        <div class="sheet-controls">
+          <button class="zoom-chip active" type="button" data-origin="50% 50%" data-scale="1">Full Sheet</button>
+          <button class="zoom-chip" type="button" data-origin="17% 28%" data-scale="2.1">Main Look</button>
+          <button class="zoom-chip" type="button" data-origin="76% 24%" data-scale="1.85">Turnaround Views</button>
+          <button class="zoom-chip" type="button" data-origin="50% 56%" data-scale="1.85">Expressions</button>
+          <button class="zoom-chip" type="button" data-origin="26% 84%" data-scale="2.0">Pose Ideas</button>
+          <button class="zoom-chip" type="button" data-origin="84% 84%" data-scale="2.1">Details</button>
+        </div>
+      </div>
+
+      <div class="sheet-info">
+        <div class="info-card">
+          <h4>&#128062; Mascot Identity</h4>
+          <p>White fluffy fur, pastel pink hair tuft &amp; arms, golden-yellow right leg, sky-blue left leg, pink paws, and sparkling violet-purple eyes.</p>
+        </div>
+        <div class="info-card">
+          <h4>&#128516; Sheet Expressions</h4>
+          <div class="tag-list">
+            <span class="mini-tag">Happy</span>
+            <span class="mini-tag">Excited</span>
+            <span class="mini-tag">Surprised</span>
+            <span class="mini-tag">Winking</span>
+            <span class="mini-tag">Sad</span>
+          </div>
+        </div>
+        <div class="info-card">
+          <h4>&#129419; Animation Poses</h4>
+          <div class="tag-list">
+            <span class="mini-tag">Waving</span>
+            <span class="mini-tag">Jumping</span>
+            <span class="mini-tag">Thinking</span>
+            <span class="mini-tag">With Butterfly</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" type="button" onclick="openReferenceModal()">Open Full-Size Reference Sheet</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Signature Color Palette -->
+  <section class="container" id="palette">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Official Swatches</div>
+        <h2>Character Color Palette</h2>
+        <p>Click any color swatch to copy its hex code.</p>
+      </div>
+    </div>
+
+    <div class="palette-grid">
+      <button class="swatch-card" type="button" data-hex="#FBF2F0"><div class="swatch-color" style="background:#FBF2F0"></div><strong>White Fur</strong><span>#FBF2F0</span></button>
+      <button class="swatch-card" type="button" data-hex="#F7A6CA"><div class="swatch-color" style="background:#F7A6CA"></div><strong>Pink</strong><span>#F7A6CA</span></button>
+      <button class="swatch-card" type="button" data-hex="#8AD2F4"><div class="swatch-color" style="background:#8AD2F4"></div><strong>Blue</strong><span>#8AD2F4</span></button>
+      <button class="swatch-card" type="button" data-hex="#F9D174"><div class="swatch-color" style="background:#F9D174"></div><strong>Yellow</strong><span>#F9D174</span></button>
+      <button class="swatch-card" type="button" data-hex="#B58AF5"><div class="swatch-color" style="background:#B58AF5"></div><strong>Purple Eyes</strong><span>#B58AF5</span></button>
+      <button class="swatch-card" type="button" data-hex="#FA8A8A"><div class="swatch-color" style="background:#FA8A8A"></div><strong>Inner Ears</strong><span>#FA8A8A</span></button>
+    </div>
+  </section>
+
+  <!-- Fan & Collab Message Form -->
+  <section class="container" id="contact">
+    <div class="section-head">
+      <div>
+        <div class="section-kicker">Fan Notes &amp; Collaborations</div>
+        <h2>Say Hello to {{ channel.channel_name }}</h2>
+        <p>Send a story suggestion, kids birthday shout-out, or collab message straight to the creator inbox.</p>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      {% if msg_sent %}
+        <div class="alert alert-ok">Thanks! Your note was delivered to the Happy Toonzz Admin Studio inbox.</div>
+      {% endif %}
+      <form class="form-grid" action="/api/messages" method="post">
+        <div class="field">
+          <label for="msgName">Your Name</label>
+          <input id="msgName" name="name" type="text" required maxlength="80" placeholder="e.g. Karthik / Parent" />
+        </div>
+        <div class="field">
+          <label for="msgEmail">Email or Social Handle</label>
+          <input id="msgEmail" name="email" type="text" required maxlength="120" placeholder="you@example.com or @handle" />
+        </div>
+        <div class="field full">
+          <label for="msgText">Message</label>
+          <textarea id="msgText" name="message" rows="3" required maxlength="1000" placeholder="Share an episode idea, feedback, or collab note..."></textarea>
+        </div>
+        <div class="field full">
+          <button class="btn btn-primary" type="submit" style="width:fit-content;">Send Note to Creator</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      {{ channel.channel_name }} &bull; {{ channel.location }} &bull;
+      <a href="{{ channel.youtube_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--ink);">YouTube</a>
+      {% if channel.instagram_url %}
+        &bull; <a href="{{ channel.instagram_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--ink);">Instagram</a>
+      {% endif %}
+      {% if channel.facebook_url %}
+        &bull; <a href="{{ channel.facebook_url }}" target="_blank" rel="noopener noreferrer" style="color:var(--ink);">Facebook</a>
+      {% endif %}
+    </div>
+  </footer>
+
+  <!-- Lightbox Modal -->
+  <div class="modal-backdrop" id="lightbox" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <div class="modal-topbar">
+        <h3 id="modalTitle">Look Preview</h3>
+        <div class="modal-controls">
+          <button class="icon-btn" id="compareToggleBtn" type="button">Compare w/ Reference</button>
+          <button class="icon-btn" id="prevBtn" type="button">&larr; Prev</button>
+          <button class="icon-btn" id="nextBtn" type="button">Next &rarr;</button>
+          <a class="icon-btn" id="modalDownload" href="#" download>Download</a>
+          <button class="icon-btn" id="closeModalBtn" type="button">&#10005; Close</button>
+        </div>
+      </div>
+      <div class="modal-content" id="modalContent">
+        <div class="modal-stage"><img id="modalImg" src="" alt="" /></div>
+        <div class="compare-box">
+          <span style="font-size:0.8rem;font-weight:800;color:var(--ink-muted);text-transform:uppercase;">Original Reference Sheet</span>
+          <div class="modal-stage"><img src="/images/reference-sheet.jpg" alt="Original Reference Sheet" /></div>
+        </div>
+      </div>
+      <div style="padding:0 20px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+        <p id="modalDesc" style="color:var(--ink-muted);font-size:0.94rem;"></p>
+        <span id="modalCounter" style="font-weight:800;font-size:0.84rem;color:var(--ink-muted);"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const LOOKS = {{ looks | tojson }};
+    const REFERENCE_ITEM = {
+      title: 'Original Character Sheet',
+      image_path: 'images/reference-sheet.jpg',
+      slug: 'happy-toonzz-reference-sheet',
+      description: 'Original Happy Toonzz mascot sheet with Turnaround Views, Expressions, Poses, and Color Palette.',
+      isRef: true
+    };
+
+    const heroImg = document.getElementById('heroPreviewImg');
+    const heroTitle = document.getElementById('heroPreviewTitle');
+    const heroSub = document.getElementById('heroPreviewSub');
+    const heroFrame = document.getElementById('heroFrame');
+    const heroThumbs = document.querySelectorAll('.thumb-btn');
+    let heroIndex = 0;
+
+    function setHero(index) {
+      heroIndex = index;
+      const item = LOOKS[index];
+      if (!item) return;
+      heroImg.src = '/' + item.image_path;
+      heroImg.alt = item.title;
+      heroTitle.textContent = item.title;
+      heroSub.textContent = item.subtitle;
+      heroThumbs.forEach((b, i) => b.classList.toggle('active', i === index));
+    }
+    heroThumbs.forEach(btn => btn.addEventListener('click', () => setHero(Number(btn.dataset.index))));
+    heroFrame.addEventListener('click', () => openLightbox(heroIndex));
+
+    // Guest favorites in browser storage
+    let activeFavs = new Set();
+    try {
+      activeFavs = new Set(JSON.parse(localStorage.getItem('happyToonzzFavs') || '[]').map(Number));
+    } catch {}
+    const favCountEl = document.getElementById('favCount');
+
+    function syncFavUI() {
+      favCountEl.textContent = activeFavs.size;
+      document.querySelectorAll('.fav-btn').forEach(btn => {
+        const lid = Number(btn.dataset.id);
+        btn.classList.toggle('liked', activeFavs.has(lid));
+      });
+    }
+
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const lid = Number(btn.dataset.id);
+        if (activeFavs.has(lid)) {
+          activeFavs.delete(lid);
+          showToast('Removed from favorites');
+        } else {
+          activeFavs.add(lid);
+          showToast('Added to favorites!');
+        }
+        try { localStorage.setItem('happyToonzzFavs', JSON.stringify([...activeFavs])); } catch {}
+        syncFavUI();
+        applyFilter();
+      });
+    });
+    syncFavUI();
+
+    let activeFilter = 'all';
+    const filterChips = document.querySelectorAll('.filter-chip');
+    const lookCards = document.querySelectorAll('.look-card');
+    function applyFilter() {
+      lookCards.forEach(card => {
+        const cat = card.dataset.category;
+        const lid = Number(card.dataset.lookId);
+        const show = activeFilter === 'all' || (activeFilter === 'favorites' && activeFavs.has(lid)) || cat === activeFilter;
+        card.classList.toggle('hidden', !show);
+      });
+    }
+    filterChips.forEach(c => c.addEventListener('click', () => {
+      activeFilter = c.dataset.filter;
+      filterChips.forEach(x => x.classList.toggle('active', x === c));
+      applyFilter();
+    }));
+
+    const sheetZoomImg = document.getElementById('sheetZoomImg');
+    document.querySelectorAll('.zoom-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.zoom-chip').forEach(c => c.classList.toggle('active', c === chip));
+        sheetZoomImg.style.transformOrigin = chip.dataset.origin;
+        sheetZoomImg.style.transform = 'scale(' + chip.dataset.scale + ')';
+      });
+    });
+
+    document.querySelectorAll('.swatch-card').forEach(card => {
+      card.addEventListener('click', async () => {
+        const hex = card.dataset.hex;
+        try { await navigator.clipboard.writeText(hex); showToast('Copied ' + hex); }
+        catch { showToast('Color: ' + hex); }
+      });
+    });
+
+    const songPlayer = document.getElementById('songPlayer');
+    const lyricLines = Array.from(document.querySelectorAll('.lyric-line'));
+    function seekSong(sec) {
+      if (!songPlayer) return;
+      songPlayer.currentTime = sec;
+      songPlayer.play();
+    }
+    if (songPlayer) {
+      songPlayer.addEventListener('timeupdate', () => {
+        const t = songPlayer.currentTime;
+        let currentBtn = null;
+        for (const btn of lyricLines) {
+          const s = parseFloat(btn.dataset.start);
+          const e = parseFloat(btn.dataset.end);
+          const match = t >= s && t < e;
+          btn.classList.toggle('active', match);
+          if (match) currentBtn = btn;
+        }
+        if (currentBtn && !songPlayer.paused) {
+          currentBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+      });
+    }
+
+    const lightbox = document.getElementById('lightbox');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalImg = document.getElementById('modalImg');
+    const modalDesc = document.getElementById('modalDesc');
+    const modalCounter = document.getElementById('modalCounter');
+    const modalDownload = document.getElementById('modalDownload');
+    const modalContent = document.getElementById('modalContent');
+    const compareToggleBtn = document.getElementById('compareToggleBtn');
+    let modalIdx = 0;
+    let viewingRef = false;
+    let compareOn = false;
+
+    function renderModal() {
+      const item = viewingRef ? REFERENCE_ITEM : LOOKS[modalIdx];
+      modalTitle.textContent = item.title;
+      modalImg.src = '/' + item.image_path;
+      modalImg.alt = item.title;
+      modalDesc.textContent = item.description;
+      modalDownload.href = '/' + item.image_path;
+      modalDownload.download = (item.slug || 'look') + '.jpg';
+      modalCounter.textContent = viewingRef ? 'Reference Sheet' : `${modalIdx + 1} / ${LOOKS.length}`;
+      compareToggleBtn.style.display = viewingRef ? 'none' : 'inline-flex';
+      modalContent.classList.toggle('compare-mode', compareOn && !viewingRef);
+    }
+
+    function openLightbox(idx) {
+      viewingRef = false;
+      modalIdx = idx;
+      renderModal();
+      lightbox.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function openReferenceModal() {
+      viewingRef = true;
+      renderModal();
+      lightbox.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeLightbox() {
+      lightbox.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('openSlideshowBtn').addEventListener('click', () => openLightbox(0));
+    document.getElementById('closeModalBtn').addEventListener('click', closeLightbox);
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      viewingRef = false;
+      modalIdx = (modalIdx - 1 + LOOKS.length) % LOOKS.length;
+      renderModal();
+    });
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      viewingRef = false;
+      modalIdx = (modalIdx + 1) % LOOKS.length;
+      renderModal();
+    });
+    compareToggleBtn.addEventListener('click', () => {
+      compareOn = !compareOn;
+      renderModal();
+    });
+    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLightbox(); });
+
+    const toast = document.getElementById('toast');
+    let toastTimer;
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 2300);
+    }
+  </script>
+</body>
+</html>

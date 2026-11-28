@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Studio &amp; Admin Panel — {{ channel.channel_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="/">
+      <div class="brand-badge">
+        <img src="/assets/sprites/expr_excited.png" alt="Happy Toonzz Mascot" />
+      </div>
+      <div class="brand-text">
+        <strong>{{ channel.channel_name }} AI Studio</strong>
+        <span>Master Admin: {{ user.username }}</span>
+      </div>
+    </a>
+    <div class="nav-links">
+      <a href="#ai-copilot">AI Voice Assistant</a>
+      <a href="#channel-editor">Channel Stats</a>
+      <a href="#looks-editor">Looks</a>
+      <a href="#master-security">Master Login &amp; API Key</a>
+    </div>
+    <div class="nav-actions">
+      <a class="btn btn-secondary" href="/">View Live Site</a>
+      <form action="/logout" method="post" style="display:inline;">
+        <button class="btn btn-primary" type="submit">Logout</button>
+      </form>
+    </div>
+  </nav>
+
+  <main class="container" style="padding:28px 0 56px;">
+    {% if saved == 'channel' %}
+      <div class="alert alert-ok">Channel details and follower stats updated on the live website!</div>
+    {% elif saved == 'look' %}
+      <div class="alert alert-ok">New character look uploaded and added to the gallery!</div>
+    {% elif saved == 'look_deleted' %}
+      <div class="alert alert-ok">Custom look removed.</div>
+    {% elif saved == 'credentials' %}
+      <div class="alert alert-ok">Master username / password updated! Use your new credentials on next login.</div>
+    {% elif saved == 'apikey' %}
+      <div class="alert alert-ok">Gemini API key saved cleanly — your AI Assistant is ready!</div>
+    {% elif saved == 'ai_cleared' %}
+      <div class="alert alert-ok">AI Assistant conversation history cleared.</div>
+    {% elif saved == 'message_deleted' %}
+      <div class="alert alert-ok">Message removed from inbox.</div>
+    {% endif %}
+
+    {% if error == 'invalid_image' %}
+      <div class="alert alert-err">Upload failed: Please choose a JPG, PNG, or WEBP image file.</div>
+    {% elif error == 'image_too_large' %}
+      <div class="alert alert-err">Upload failed: Image must be under 8 MB.</div>
+    {% elif error == 'wrong_password' %}
+      <div class="alert alert-err">Current password did not match.</div>
+    {% elif error == 'cred_invalid' %}
+      <div class="alert alert-err">Invalid username or new password (username 3-32 chars, password min 6 chars).</div>
+    {% endif %}
+
+    <!-- AI Assistant Voice & Task Dashboard -->
+    <section class="panel-card ai-studio-card" id="ai-copilot" style="margin-bottom:24px;">
+      <div class="ai-header">
+        <div>
+          <div class="section-kicker">Interactive Creator Copilot &bull; Speak or Type</div>
+          <h1 style="font-family:var(--font-display);font-size:1.75rem;">
+            Happy Toonzz AI Assistant Dashboard
+          </h1>
+          <p style="font-size:0.9rem;color:var(--ink-muted);">
+            Ask anything by voice or text — search the internet, generate Happy Toonzz images, render videos, update follower stats, or manage your site.
+          </p>
+        </div>
+
+        <div class="ai-voice-controls">
+          <label class="toggle-pill" title="Speak replies aloud automatically">
+            <input type="checkbox" id="autoSpeakToggle" checked />
+            <span>&#128266; Positive Auto-Voice Reply</span>
+          </label>
+          <label class="toggle-pill" title="Keep listening hands-free after each voice reply">
+            <input type="checkbox" id="passiveLoopToggle" />
+            <span>&#127897; Hands-Free Voice Loop</span>
+          </label>
+          <select id="speechLang" class="lang-select" aria-label="Voice input language">
+            <option value="en-IN">English (India)</option>
+            <option value="ta-IN">Tamil (தமிழ்)</option>
+            <option value="en-US">English (US)</option>
+          </select>
+          <form action="/admin/ai/clear" method="post" style="display:inline;">
+            <button class="btn btn-secondary btn-sm" type="submit">Clear Chat</button>
+          </form>
+        </div>
+      </div>
+
+      {% if not has_api_key %}
+        <div class="alert alert-err" style="margin-top:12px;">
+          No Gemini API key configured yet. Scroll to <strong>Master Credentials &amp; API Key</strong> below and paste your Gemini API key to activate full AI actions!
+        </div>
+      {% endif %}
+
+      <div class="ai-quick-prompts">
+        <button class="filter-chip" type="button" onclick="usePrompt('Search latest trending Tamil kids cartoon ideas on YouTube')">&#128269; Search YouTube trends</button>
+        <button class="filter-chip" type="button" onclick="usePrompt('Create an image of Happy Toonzz celebrating Diwali with sparkles and lanterns')">&#127912; Create Diwali Look Image</button>
+        <button class="filter-chip" type="button" onclick="usePrompt('Generate a short animated video of Happy Toonzz dancing happily in a rainbow meadow')">&#127916; Generate Story Video Clip</button>
+        <button class="filter-chip" type="button" onclick="usePrompt('Check my current website stats and fan messages')">&#128202; Check Stats &amp; Inbox</button>
+      </div>
+
+      <div class="ai-chat-feed" id="aiChatFeed">
+        {% if not ai_history %}
+          <div class="ai-bubble assistant">
+            <div class="ai-bubble-role">&#10024; Happy Toonzz Copilot</div>
+            <div>
+              Vanakkam! I am your Happy Toonzz AI Studio Assistant! Click the <strong>Speak</strong> microphone button or type below — I can search online, draw new Happy Toonzz kitten images, generate video clips, update your follower stats, and answer back in voice!
+            </div>
+          </div>
+        {% endif %}
+        {% for item in ai_history %}
+          <div class="ai-bubble {{ item.role }}">
+            <div class="ai-bubble-role">
+              {{ 'You' if item.role == 'user' else '&#10024; Happy Toonzz Copilot' }}
+              {% if item.role == 'assistant' %}
+                <button class="speak-mini-btn" type="button" onclick="speakText(this.dataset.txt)" data-txt="{{ item.text }}">&#128266; Play Voice</button>
+              {% endif %}
+            </div>
+            <div class="ai-bubble-text">{{ item.text }}</div>
+            {% if item.media_type == 'image' and item.media_url %}
+              <div class="ai-media-box">
+                <img src="{{ item.media_url }}" alt="Generated AI image" />
+                <div class="ai-media-actions">
+                  <a class="btn btn-secondary btn-sm" href="{{ item.media_url }}" download>Download Image</a>
+                  <button class="btn btn-primary btn-sm" type="button" onclick="publishLook('{{ item.media_url }}')">Publish to Looks Gallery</button>
+                </div>
+              </div>
+            {% elif item.media_type == 'video' and item.media_url %}
+              <div class="ai-media-box">
+                <video controls playsinline preload="metadata">
+                  <source src="{{ item.media_url }}" type="video/mp4" />
+                </video>
+                <div class="ai-media-actions">
+                  <a class="btn btn-primary btn-sm" href="{{ item.media_url }}" download>Download Video (.mp4)</a>
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div id="voiceStatus" class="voice-status">Ready — type a task or click Speak to talk!</div>
+
+      <form class="ai-input-bar" id="aiForm" onsubmit="return sendAiPrompt(event)">
+        <button class="btn btn-secondary mic-btn" id="micBtn" type="button" onclick="toggleMic()">
+          &#127908; Speak
+        </button>
+        <input
+          id="aiInput"
+          type="text"
+          autocomplete="off"
+          placeholder="Ask anything... e.g. 'Create Happy Toonzz astronaut image' or 'Update IG followers to 900'"
+        />
+        <button class="btn btn-primary" id="aiSendBtn" type="submit">Send &amp; Run</button>
+      </form>
+      <audio id="voiceAudioPlayer" style="display:none;"></audio>
+    </section>
+
+    <div class="admin-layout">
+      <!-- Left: Channel Info & Looks Manager -->
+      <div style="display:flex;flex-direction:column;gap:22px;">
+        <section class="panel-card" id="channel-editor" style="padding:24px;">
+          <div class="section-kicker">Channel &amp; Social Stats</div>
+          <h2 style="font-family:var(--font-display);margin-bottom:14px;">Update Followers, Bio &amp; Links</h2>
+          <div id="channelLiveNotice" class="alert alert-ok" style="display:none;margin-bottom:14px;"></div>
+          <form class="form-grid" action="/admin/channel" method="post">
+            <div class="field">
+              <label for="cName">Channel Name</label>
+              <input id="cName" name="channel_name" value="{{ channel.channel_name }}" required />
+            </div>
+            <div class="field">
+              <label for="cLoc">Location</label>
+              <input id="cLoc" name="location" value="{{ channel.location }}" required />
+            </div>
+            <div class="field full">
+              <label for="cTag">Tagline</label>
+              <input id="cTag" name="tagline" value="{{ channel.tagline }}" required />
+            </div>
+            <div class="field full">
+              <label for="cBio">Channel Description / Bio</label>
+              <textarea id="cBio" name="bio" rows="3" required>{{ channel.bio }}</textarea>
+            </div>
+
+            <div class="field">
+              <label for="ytHandle">YouTube Handle</label>
+              <input id="ytHandle" name="youtube_handle" value="{{ channel.youtube_handle }}" required />
+            </div>
+            <div class="field">
+              <label for="ytUrl">YouTube URL</label>
+              <input id="ytUrl" name="youtube_url" type="url" value="{{ channel.youtube_url }}" required />
+            </div>
+            <div class="field">
+              <label for="ytSubs">YouTube Subscribers</label>
+              <input id="ytSubs" name="youtube_subs" value="{{ channel.youtube_subs }}" placeholder="e.g. 145+" />
+            </div>
+            <div class="field">
+              <label for="ytVids">YouTube Video Count</label>
+              <input id="ytVids" name="youtube_videos" value="{{ channel.youtube_videos }}" placeholder="e.g. 192+" />
+            </div>
+
+            <div class="field">
+              <label for="igHandle">Instagram Handle</label>
+              <input id="igHandle" name="instagram_handle" value="{{ channel.instagram_handle }}" placeholder="@happy_toonzz" />
+            </div>
+            <div class="field">
+              <label for="igUrl">Instagram URL</label>
+              <input id="igUrl" name="instagram_url" value="{{ channel.instagram_url }}" placeholder="https://www.instagram.com/happy_toonzz/" />
+            </div>
+            <div class="field full">
+              <label for="igFoll">Instagram Followers</label>
+              <input id="igFoll" name="instagram_followers" value="{{ channel.instagram_followers }}" placeholder="Enter your exact Instagram follower count" />
+            </div>
+
+            <div class="field">
+              <label for="fbHandle">Facebook Page Name</label>
+              <input id="fbHandle" name="facebook_handle" value="{{ channel.facebook_handle }}" placeholder="Happy Toonzz" />
+            </div>
+            <div class="field">
+              <label for="fbUrl">Facebook URL</label>
+              <input id="fbUrl" name="facebook_url" value="{{ channel.facebook_url }}" placeholder="https://www.facebook.com/..." />
+            </div>
+            <div class="field full">
+              <label for="fbFoll">Facebook Followers</label>
+              <input id="fbFoll" name="facebook_followers" value="{{ channel.facebook_followers }}" placeholder="Enter Facebook follower count" />
+            </div>
+
+            <div class="field full">
+              <button class="btn btn-primary" type="submit" style="width:fit-content;">Save Channel Updates</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel-card" id="looks-editor" style="padding:24px;">
+          <div class="section-kicker">Character Gallery Manager</div>
+          <h2 style="font-family:var(--font-display);margin-bottom:14px;">Add New Happy Toonzz Look</h2>
+          <form class="form-grid" action="/admin/looks" method="post" enctype="multipart/form-data">
+            <div class="field">
+              <label for="lTitle">Look Title</label>
+              <input id="lTitle" name="title" required placeholder="e.g. Royal Prince" />
+            </div>
+            <div class="field">
+              <label for="lSub">Short Subtitle</label>
+              <input id="lSub" name="subtitle" required placeholder="Golden crown &amp; velvet cape" />
+            </div>
+            <div class="field">
+              <label for="lCat">Category</label>
+              <select id="lCat" name="category">
+                <option value="adventure">Adventure</option>
+                <option value="cozy">Cozy &amp; Sweet</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="lBadge">Badge Label</label>
+              <input id="lBadge" name="badge" required placeholder="e.g. Fantasy" />
+            </div>
+            <div class="field full">
+              <label for="lDesc">Description</label>
+              <textarea id="lDesc" name="description" rows="2" required placeholder="Describe outfit colors and scene..."></textarea>
+            </div>
+            <div class="field full">
+              <label for="lFile">Image File (JPG / PNG / WEBP)</label>
+              <input id="lFile" name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp" required />
+            </div>
+            <div class="field full">
+              <button class="btn btn-primary" type="submit" style="width:fit-content;">Upload Look to Gallery</button>
+            </div>
+          </form>
+
+          <hr style="border:none;border-top:1px dashed var(--border);margin:20px 0;" />
+          <h3 style="font-family:var(--font-display);font-size:1.08rem;margin-bottom:10px;">Active Looks ({{ looks|length }})</h3>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            {% for l in looks %}
+            <div class="msg-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <img src="/{{ l.image_path }}" alt="{{ l.title }}" style="width:44px;height:44px;border-radius:10px;object-fit:cover;" />
+                <div>
+                  <strong>{{ l.title }}</strong>
+                  <div style="font-size:0.78rem;color:var(--ink-muted);">{{ l.badge }} &bull; {{ l.category }}</div>
+                </div>
+              </div>
+              {% if not l.is_default %}
+                <form action="/admin/looks/{{ l.id }}/delete" method="post">
+                  <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                </form>
+              {% else %}
+                <span class="mini-tag">Core Look</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+
+      <!-- Right: Master Login Credentials, API Key & Messages -->
+      <div style="display:flex;flex-direction:column;gap:22px;">
+        <section class="panel-card" id="master-security" style="padding:24px;">
+          <div class="section-kicker">Master Credentials</div>
+          <h2 style="font-family:var(--font-display);margin-bottom:10px;">Change Master Username &amp; Password</h2>
+          <p style="font-size:0.84rem;color:var(--ink-muted);margin-bottom:14px;">
+            Current master login: <strong>{{ user.username }}</strong>
+          </p>
+          <form action="/admin/credentials" method="post" style="display:flex;flex-direction:column;gap:12px;">
+            <div class="field">
+              <label for="curPw">Current Master Password</label>
+              <input id="curPw" name="current_password" type="password" required />
+            </div>
+            <div class="field">
+              <label for="newUser">Master Username</label>
+              <input id="newUser" name="new_username" value="{{ user.username }}" minlength="3" maxlength="32" required />
+            </div>
+            <div class="field">
+              <label for="newPw">New Password (leave blank to keep current)</label>
+              <input id="newPw" name="new_password" type="password" minlength="6" placeholder="Optional new password (min 6 chars)" />
+            </div>
+            <button class="btn btn-primary" type="submit" style="width:fit-content;">Save Master Credentials</button>
+          </form>
+        </section>
+
+        <section class="panel-card" style="padding:24px;">
+          <div class="section-kicker">AI Engine Settings</div>
+          <h2 style="font-family:var(--font-display);margin-bottom:10px;">Gemini API Key</h2>
+          <p style="font-size:0.84rem;color:var(--ink-muted);margin-bottom:12px;">
+            Status: <strong>{{ 'Active (' + masked_api_key + ')' if has_api_key else 'Not Configured' }}</strong>. Free Tier keys run Chat, Live Web Search fallback, Free AI Images &amp; Motion Video; Paid Tier keys unlock native Nano Banana + Omni 1.2 Flash video.
+          </p>
+          <form action="/admin/apikey" method="post" style="display:flex;flex-direction:column;gap:10px;">
+            <div class="field">
+              <label for="apiKeyInp">Update Gemini API Key</label>
+              <input id="apiKeyInp" name="gemini_api_key" type="password" placeholder="Paste Gemini API key (AIza... / AQ...)" required />
+            </div>
+            <button class="btn btn-secondary" type="submit" style="width:fit-content;">Save API Key</button>
+          </form>
+        </section>
+
+        <section class="panel-card" style="padding:24px;">
+          <div class="section-kicker">Fan &amp; Collab Inbox</div>
+          <h2 style="font-family:var(--font-display);margin-bottom:14px;">Messages ({{ messages|length }})</h2>
+          {% if messages %}
+            {% for m in messages %}
+            <div class="msg-item">
+              <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;">
+                <strong>{{ m.name }}</strong>
+                <span style="font-size:0.76rem;color:var(--ink-muted);">{{ m.email }}</span>
+              </div>
+              <p style="font-size:0.88rem;color:var(--ink-muted);margin-bottom:8px;">{{ m.message }}</p>
+              <form action="/admin/messages/{{ m.id }}/delete" method="post">
+                <button class="btn btn-danger btn-sm" type="submit">Dismiss</button>
+              </form>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p style="font-size:0.9rem;color:var(--ink-muted);">No fan or collab messages yet.</p>
+          {% endif %}
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const feed = document.getElementById('aiChatFeed');
+    const aiInput = document.getElementById('aiInput');
+    const aiSendBtn = document.getElementById('aiSendBtn');
+    const micBtn = document.getElementById('micBtn');
+    const voiceStatus = document.getElementById('voiceStatus');
+    const autoSpeakToggle = document.getElementById('autoSpeakToggle');
+    const passiveLoopToggle = document.getElementById('passiveLoopToggle');
+    const speechLang = document.getElementById('speechLang');
+    const voicePlayer = document.getElementById('voiceAudioPlayer');
+
+    feed.scrollTop = feed.scrollHeight;
+
+    function usePrompt(txt) {
+      aiInput.value = txt;
+      aiInput.focus();
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function appendBubble(role, text, mediaList = []) {
+      const wrap = document.createElement('div');
+      wrap.className = 'ai-bubble ' + role;
+
+      const roleDiv = document.createElement('div');
+      roleDiv.className = 'ai-bubble-role';
+      roleDiv.innerHTML = role === 'user' ? 'You' : '&#10024; Happy Toonzz Copilot';
+      if (role === 'assistant') {
+        const spk = document.createElement('button');
+        spk.type = 'button';
+        spk.className = 'speak-mini-btn';
+        spk.innerHTML = '&#128266; Play Voice';
+        spk.addEventListener('click', () => speakText(text));
+        roleDiv.appendChild(spk);
+      }
+      wrap.appendChild(roleDiv);
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'ai-bubble-text';
+      textDiv.textContent = text;
+      wrap.appendChild(textDiv);
+
+      for (const m of mediaList) {
+        const box = document.createElement('div');
+        box.className = 'ai-media-box';
+        if (m.media_type === 'image') {
+          const img = document.createElement('img');
+          img.src = m.media_url;
+          img.alt = 'Generated AI image';
+          box.appendChild(img);
+
+          const acts = document.createElement('div');
+          acts.className = 'ai-media-actions';
+          const dl = document.createElement('a');
+          dl.className = 'btn btn-secondary btn-sm';
+          dl.href = m.media_url;
+          dl.download = '';
+          dl.textContent = 'Download Image';
+          const pub = document.createElement('button');
+          pub.type = 'button';
+          pub.className = 'btn btn-primary btn-sm';
+          pub.textContent = 'Publish to Looks Gallery';
+          pub.addEventListener('click', () => publishLook(m.media_url));
+          acts.appendChild(dl);
+          acts.appendChild(pub);
+          box.appendChild(acts);
+        } else if (m.media_type === 'video') {
+          const vid = document.createElement('video');
+          vid.controls = true;
+          vid.playsInline = true;
+          const src = document.createElement('source');
+          src.src = m.media_url;
+          src.type = 'video/mp4';
+          vid.appendChild(src);
+          box.appendChild(vid);
+
+          const acts = document.createElement('div');
+          acts.className = 'ai-media-actions';
+          const dl = document.createElement('a');
+          dl.className = 'btn btn-primary btn-sm';
+          dl.href = m.media_url;
+          dl.download = '';
+          dl.textContent = 'Download Video (.mp4)';
+          acts.appendChild(dl);
+          box.appendChild(acts);
+        }
+        wrap.appendChild(box);
+      }
+
+      feed.appendChild(wrap);
+      feed.scrollTop = feed.scrollHeight;
+      return wrap;
+    }
+
+    async function publishLook(imageUrl) {
+      const title = prompt('Enter Look Title for the gallery:', 'Happy Toonzz Special');
+      if (!title) return;
+      const body = new FormData();
+      body.append('image_url', imageUrl);
+      body.append('title', title);
+      body.append('subtitle', 'Created with Happy Toonzz AI Studio');
+      const res = await fetch('/admin/ai/publish', { method: 'POST', body });
+      const data = await res.json();
+      if (data.ok) {
+        voiceStatus.textContent = 'Published "' + title + '" to the live Looks gallery!';
+        speakText('Awesome! I published ' + title + ' right onto your live Happy Toonzz website!');
+      } else {
+        voiceStatus.textContent = 'Publish failed: ' + (data.error || 'unknown error');
+      }
+    }
+
+    async function speakText(text, onDone = null) {
+      if (!text) { if (onDone) onDone(); return; }
+      try {
+        voiceStatus.textContent = 'Speaking positive response...';
+        const body = new FormData();
+        body.append('text', text);
+        const res = await fetch('/admin/ai/tts', { method: 'POST', body });
+        if (res.status === 200) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          voicePlayer.src = url;
+          voicePlayer.onended = () => {
+            URL.revokeObjectURL(url);
+            voiceStatus.textContent = 'Ready — ask your next task!';
+            if (onDone) onDone();
+          };
+          await voicePlayer.play();
+          return;
+        }
+      } catch (e) {}
+
+      // Offline browser speechSynthesis fallback
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.lang = speechLang.value || 'en-IN';
+        utt.rate = 1.04;
+        utt.pitch = 1.08;
+        utt.onend = () => {
+          voiceStatus.textContent = 'Ready — ask your next task!';
+          if (onDone) onDone();
+        };
+        window.speechSynthesis.speak(utt);
+      } else if (onDone) {
+        onDone();
+      }
+    }
+
+    function syncChannelForm(ch) {
+      if (!ch) return false;
+      const fieldMap = {
+        cName: 'channel_name',
+        cLoc: 'location',
+        cTag: 'tagline',
+        cBio: 'bio',
+        ytHandle: 'youtube_handle',
+        ytUrl: 'youtube_url',
+        ytSubs: 'youtube_subs',
+        ytVids: 'youtube_videos',
+        igHandle: 'instagram_handle',
+        igUrl: 'instagram_url',
+        igFoll: 'instagram_followers',
+        fbHandle: 'facebook_handle',
+        fbUrl: 'facebook_url',
+        fbFoll: 'facebook_followers',
+      };
+      let updatedCount = 0;
+      for (const [elId, key] of Object.entries(fieldMap)) {
+        const el = document.getElementById(elId);
+        if (!el || ch[key] === undefined || ch[key] === null) continue;
+        const nextVal = String(ch[key]);
+        if (el.value !== nextVal) {
+          el.value = nextVal;
+          el.style.transition = 'box-shadow 0.3s ease, background-color 0.3s ease';
+          el.style.boxShadow = '0 0 0 3px rgba(56, 203, 137, 0.45)';
+          el.style.backgroundColor = '#f0fdf6';
+          setTimeout(() => {
+            el.style.boxShadow = '';
+            el.style.backgroundColor = '';
+          }, 2600);
+          updatedCount += 1;
+        }
+      }
+      const notice = document.getElementById('channelLiveNotice');
+      if (notice) {
+        notice.textContent = updatedCount > 0
+          ? 'Synced live by AI Assistant (' + updatedCount + ' field' + (updatedCount > 1 ? 's' : '') + ' updated on website & form)!'
+          : 'Verified live channel stats from website database.';
+        notice.style.display = 'block';
+      }
+      return updatedCount > 0;
+    }
+
+    let isBusy = false;
+    async function sendAiPrompt(e, fromVoice = false) {
+      if (e) e.preventDefault();
+      if (isBusy) return false;
+      const prompt = aiInput.value.trim();
+      if (!prompt) return false;
+
+      isBusy = true;
+      aiSendBtn.disabled = true;
+      aiInput.value = '';
+      appendBubble('user', prompt);
+      const thinkingBubble = appendBubble('assistant', 'Working on it happily... (running tools if needed)');
+      voiceStatus.textContent = 'AI Copilot is processing your request...';
+
+      try {
+        const body = new FormData();
+        body.append('prompt', prompt);
+        const res = await fetch('/admin/ai/chat', { method: 'POST', body });
+        const data = await res.json();
+        thinkingBubble.remove();
+
+        const reply = data.reply || 'All done!';
+        appendBubble('assistant', reply, data.media || []);
+
+        const channelSynced = data.channel ? syncChannelForm(data.channel) : false;
+
+        const maybeLoop = () => {
+          if (passiveLoopToggle.checked) {
+            setTimeout(() => startListening(), 350);
+          }
+        };
+
+        if (autoSpeakToggle.checked || fromVoice) {
+          speakText(reply, maybeLoop);
+          if (channelSynced) {
+            voiceStatus.textContent = 'Channel stats synced live & speaking positive response...';
+          }
+        } else {
+          voiceStatus.textContent = channelSynced ? 'Done — channel stats synced live!' : 'Done!';
+          maybeLoop();
+        }
+      } catch (err) {
+        thinkingBubble.remove();
+        appendBubble('assistant', 'Sorry, connection interrupted — please try once more!');
+        voiceStatus.textContent = 'Ready';
+      } finally {
+        isBusy = false;
+        aiSendBtn.disabled = false;
+      }
+      return false;
+    }
+
+    // Browser Web Speech Recognition (Voice Input)
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let listening = false;
+
+    function startListening() {
+      if (!SpeechRec) {
+        voiceStatus.textContent = 'Voice mic requires Chrome / Edge (Web Speech API). Type your request below!';
+        return;
+      }
+      if (listening && recognition) return;
+      recognition = new SpeechRec();
+      recognition.lang = speechLang.value || 'en-IN';
+      recognition.interimResults = true;
+      recognition.continuous = false;
+
+      listening = true;
+      micBtn.classList.add('recording');
+      micBtn.innerHTML = '&#128308; Listening...';
+      voiceStatus.textContent = 'Listening (' + recognition.lang + ') — speak clearly!';
+
+      let finalTranscript = '';
+      recognition.onresult = (evt) => {
+        let interim = '';
+        for (let i = evt.resultIndex; i < evt.results.length; i++) {
+          const piece = evt.results[i][0].transcript;
+          if (evt.results[i].isFinal) finalTranscript += piece;
+          else interim += piece;
+        }
+        aiInput.value = (finalTranscript + ' ' + interim).trim();
+      };
+
+      recognition.onerror = (evt) => {
+        listening = false;
+        micBtn.classList.remove('recording');
+        micBtn.innerHTML = '&#127908; Speak';
+        voiceStatus.textContent = 'Mic stopped (' + evt.error + '). Click Speak to try again.';
+      };
+
+      recognition.onend = () => {
+        listening = false;
+        micBtn.classList.remove('recording');
+        micBtn.innerHTML = '&#127908; Speak';
+        if (aiInput.value.trim()) {
+          sendAiPrompt(null, true);
+        } else {
+          voiceStatus.textContent = 'Ready — click Speak to talk!';
+        }
+      };
+
+      recognition.start();
+    }
+
+    function toggleMic() {
+      if (listening && recognition) {
+        recognition.stop();
+      } else {
+        startListening();
+      }
+    }
+  </script>
+</body>
+</html>

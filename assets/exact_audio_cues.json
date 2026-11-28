@@ -1,0 +1,282 @@
+[
+  {
+    "start_sec": 0.0,
+    "end_sec": 3.9,
+    "section": "Intro (Chime)",
+    "tamil": "(இசை — சைலோஃபோன்)",
+    "tanglish": "(Playful chime melody)",
+    "english": "Playful marimba & xylophone opening"
+  },
+  {
+    "start_sec": 3.9,
+    "end_sec": 7.4,
+    "section": "Intro Build-up",
+    "tamil": "ஊ... ஓ...",
+    "tanglish": "Ooh... Oh...",
+    "english": "Upbeat synth & flute build-up"
+  },
+  {
+    "start_sec": 7.4,
+    "end_sec": 11.4,
+    "section": "Chorus 1",
+    "tamil": "ஹே ஹே சந்தோஷம் எங்கே பார்த்தாலும் கொண்டாட்டம்",
+    "tanglish": "Hey hey sandhosham, enge paarthaalum kondaattam",
+    "english": "Hey hey, happiness! Celebration everywhere!"
+  },
+  {
+    "start_sec": 11.4,
+    "end_sec": 15.8,
+    "section": "Chorus 1",
+    "tamil": "கை தட்டலாம் காலாட்டலாம் சிரிச்சுக்கிட்டே வாழலாம்",
+    "tanglish": "Kai thattalaam kaalaattalaam, sirichukkitte vaazhalaam",
+    "english": "Let's clap our hands, tap our feet, and live smiling!"
+  },
+  {
+    "start_sec": 15.8,
+    "end_sec": 19.3,
+    "section": "Chorus 1 (Hook)",
+    "tamil": "லா லலலா லாலலா கவலை எல்லாம் பறக்கட்டுமா",
+    "tanglish": "La lalala laalala, kavalai ellaam parakkattumaa",
+    "english": "La lalala laalala, let all our worries fly away!"
+  },
+  {
+    "start_sec": 19.3,
+    "end_sec": 23.2,
+    "section": "Chorus 1 (Hook)",
+    "tamil": "லா லலலா லாலலா ல லலலல லா",
+    "tanglish": "La lalala laalala, la lalalala laa",
+    "english": "Joyful chorus vocalization"
+  },
+  {
+    "start_sec": 23.5,
+    "end_sec": 27.2,
+    "section": "Verse 1",
+    "tamil": "நம்ம உலகம் அழகாகட்டுமா",
+    "tanglish": "Namma ulagam azhagaagattumaa",
+    "english": "Shall our world become beautiful?"
+  },
+  {
+    "start_sec": 27.3,
+    "end_sec": 30.8,
+    "section": "Verse 1",
+    "tamil": "காலையிலே சூரியன் சிரிக்குதே",
+    "tanglish": "Kaalaiyile sooriyan sirikkudhe",
+    "english": "In the morning, the sun is smiling!"
+  },
+  {
+    "start_sec": 30.9,
+    "end_sec": 34.8,
+    "section": "Verse 1",
+    "tamil": "காற்று கூட பாட்டொன்று பாடுது",
+    "tanglish": "Kaatru kooda paattondru paadudhu",
+    "english": "Even the wind sings a song!"
+  },
+  {
+    "start_sec": 34.8,
+    "end_sec": 38.6,
+    "section": "Verse 1",
+    "tamil": "சின்ன சின்ன ஆசைகள் சேர்த்து",
+    "tanglish": "Chinna chinna aasaigal serththu",
+    "english": "Gathering little wishes together,"
+  },
+  {
+    "start_sec": 38.7,
+    "end_sec": 42.4,
+    "section": "Verse 1",
+    "tamil": "வாழ்க்கை அழகா மாறுது",
+    "tanglish": "Vaazhkai azhagaa maarudhu",
+    "english": "Life turns so beautiful!"
+  },
+  {
+    "start_sec": 42.4,
+    "end_sec": 46.3,
+    "section": "Verse 1",
+    "tamil": "தோல்வி வந்தா கவலை வேண்டாம்",
+    "tanglish": "Tholvi vandhaa kavalai vendaam",
+    "english": "Don't worry if failure comes,"
+  },
+  {
+    "start_sec": 46.4,
+    "end_sec": 50.2,
+    "section": "Verse 1",
+    "tamil": "நண்பர்கள் கூட கை கோர்த்தால்",
+    "tanglish": "Nanbargal kooda kai korththaal",
+    "english": "When we hold hands with friends,"
+  },
+  {
+    "start_sec": 50.3,
+    "end_sec": 54.0,
+    "section": "Verse 1",
+    "tamil": "எல்லா நாளும் திருவிழாதான்",
+    "tanglish": "Ellaa naalum thiruvizhaadhaan",
+    "english": "Every day is a festival!"
+  },
+  {
+    "start_sec": 54.3,
+    "end_sec": 58.2,
+    "section": "Chorus 2",
+    "tamil": "ஹே ஹே சந்தோஷம் எங்கே பார்த்தாலும் கொண்டாட்டம்",
+    "tanglish": "Hey hey sandhosham, enge paarthaalum kondaattam",
+    "english": "Hey hey, happiness! Celebration everywhere!"
+  },
+  {
+    "start_sec": 58.2,
+    "end_sec": 62.2,
+    "section": "Chorus 2",
+    "tamil": "கை தட்டலாம் காலாட்டலாம் சிரிச்சுக்கிட்டே வாழலாம்",
+    "tanglish": "Kai thattalaam kaalaattalaam, sirichukkitte vaazhalaam",
+    "english": "Let's clap our hands, tap our feet, and live smiling!"
+  },
+  {
+    "start_sec": 62.3,
+    "end_sec": 69.3,
+    "section": "Dance Break 1",
+    "tamil": "(இசை + ஹே! ஹே! ஹு! ஹா!)",
+    "tanglish": "(Hey! Hey! Hoo! Ha!)",
+    "english": "Upbeat instrumental dance break with vocal chops"
+  },
+  {
+    "start_sec": 69.5,
+    "end_sec": 73.2,
+    "section": "Verse 2",
+    "tamil": "நிலவு கூட நம்மைப் பார்க்குது",
+    "tanglish": "Nilavu kooda nammai paarkkudhu",
+    "english": "Even the moon watches us,"
+  },
+  {
+    "start_sec": 73.3,
+    "end_sec": 76.8,
+    "section": "Verse 2",
+    "tamil": "நட்சத்திரம் கண்ணடிக்குது",
+    "tanglish": "Natchathiram kannadikkudhu",
+    "english": "The stars wink at us!"
+  },
+  {
+    "start_sec": 76.9,
+    "end_sec": 80.7,
+    "section": "Verse 2",
+    "tamil": "அன்பைக் கொஞ்சம் பகிர்ந்தாலே",
+    "tanglish": "Anbai konjam pagirndhaale",
+    "english": "If we share just a little love,"
+  },
+  {
+    "start_sec": 80.8,
+    "end_sec": 84.7,
+    "section": "Verse 2",
+    "tamil": "உலகம் அழகாத் தெரியுது",
+    "tanglish": "Ulagam azhagaath theriyudhu",
+    "english": "The world looks so beautiful!"
+  },
+  {
+    "start_sec": 84.8,
+    "end_sec": 88.5,
+    "section": "Verse 2",
+    "tamil": "சின்ன சின்ன சிரிப்புகளாலே",
+    "tanglish": "Chinna chinna sirippugalaale",
+    "english": "Through little smiles,"
+  },
+  {
+    "start_sec": 88.6,
+    "end_sec": 92.3,
+    "section": "Verse 2",
+    "tamil": "பெரிய சந்தோஷம் கிடைக்குதே",
+    "tanglish": "Periya sandhosham kidaikkudhe",
+    "english": "Great happiness reaches us!"
+  },
+  {
+    "start_sec": 92.4,
+    "end_sec": 96.4,
+    "section": "Verse 2",
+    "tamil": "நம்ம மனசு குழந்தை போலே",
+    "tanglish": "Namma manasu kuzhandhai pole",
+    "english": "With a heart like a child,"
+  },
+  {
+    "start_sec": 96.5,
+    "end_sec": 100.3,
+    "section": "Verse 2",
+    "tamil": "தினமும் புதுசா மலரட்டுமே",
+    "tanglish": "Dhinamum pudhusaa malarattume",
+    "english": "May it bloom anew every day!"
+  },
+  {
+    "start_sec": 100.4,
+    "end_sec": 115.5,
+    "section": "Dance Break 2 & Cheers",
+    "tamil": "(இசை + ஹா! ஹோ ஹோ! ஹேய்! சபாஷ்!)",
+    "tanglish": "(Ha! Ho ho! Heyyy! Shabaash!)",
+    "english": "High-energy dance break & kids cheering"
+  },
+  {
+    "start_sec": 116.1,
+    "end_sec": 120.0,
+    "section": "Bridge Chorus (Soft)",
+    "tamil": "ஹே ஹே சந்தோஷம் இது நம்ம ஹாப்பி டூன்ஸ் கொண்டாட்டம்",
+    "tanglish": "Hey hey sandhosham, idhu namma Happy Toonzz kondaattam",
+    "english": "Soft beat breakdown — Happy Toonzz celebration!"
+  },
+  {
+    "start_sec": 120.0,
+    "end_sec": 123.8,
+    "section": "Bridge Chorus (Soft)",
+    "tamil": "ஆடலாம் பாடலாம் அன்போடு சேர்ந்து வாழலாம்",
+    "tanglish": "Aadalaam paadalaam, anbodu serndhu vaazhalaam",
+    "english": "Let's dance, sing, and live together with love!"
+  },
+  {
+    "start_sec": 123.8,
+    "end_sec": 127.7,
+    "section": "Outro Chorus 1 (Full Beat)",
+    "tamil": "ஹே ஹே சந்தோஷம் இது நம்ம ஹாப்பி டூன்ஸ் கொண்டாட்டம்",
+    "tanglish": "Hey hey sandhosham, idhu namma Happy Toonzz kondaattam",
+    "english": "Full beat drop — Happy Toonzz celebration!"
+  },
+  {
+    "start_sec": 127.7,
+    "end_sec": 131.5,
+    "section": "Outro Chorus 1 (Full Beat)",
+    "tamil": "ஆடலாம் பாடலாம் அன்போடு சேர்ந்து வாழலாம்",
+    "tanglish": "Aadalaam paadalaam, anbodu serndhu vaazhalaam",
+    "english": "Let's dance, sing, and live together with love!"
+  },
+  {
+    "start_sec": 131.5,
+    "end_sec": 139.8,
+    "section": "Celebration Interlude",
+    "tamil": "(ஓஓஓ / லலலா... + ஹே!)",
+    "tanglish": "(Ooh / Lalala... + Hey!)",
+    "english": "Festive synth melody & vocal harmonies"
+  },
+  {
+    "start_sec": 139.8,
+    "end_sec": 143.3,
+    "section": "Outro Chorus 2 (Climax)",
+    "tamil": "ஹே ஹே சந்தோஷம் இது நம்ம ஹாப்பி டூன்ஸ் கொண்டாட்டம்",
+    "tanglish": "Hey hey sandhosham, idhu namma Happy Toonzz kondaattam",
+    "english": "Grand finale Happy Toonzz celebration!"
+  },
+  {
+    "start_sec": 143.3,
+    "end_sec": 146.6,
+    "section": "Outro Chorus 2 (Climax)",
+    "tamil": "ஆடலாம் பாடலாம் அன்போடு சேர்ந்து வாழலாம்",
+    "tanglish": "Aadalaam paadalaam, anbodu serndhu vaazhalaam",
+    "english": "Let's dance, sing, and live together with love!"
+  },
+  {
+    "start_sec": 146.6,
+    "end_sec": 150.5,
+    "section": "Finale Tag",
+    "tamil": "லா லலலா லாலலா — ஹாப்பி டூன்ஸ்! ஹே! யா!",
+    "tanglish": "La lalala laalala — Happy Toonzz! Hey! Yeah!",
+    "english": "Final sign-off & cheer!"
+  },
+  {
+    "start_sec": 150.5,
+    "end_sec": 154.46,
+    "section": "Outro Tail",
+    "tamil": "(மணியோசை)",
+    "tanglish": "(Sparkle chime fade-out)",
+    "english": "Clean sparkle fade-out"
+  }
+]

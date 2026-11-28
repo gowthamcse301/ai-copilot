@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Master Admin Login — {{ channel.channel_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a class="brand" href="/">
+      <div class="brand-badge">
+        <img src="/assets/sprites/expr_happy.png" alt="Happy Toonzz Mascot" />
+      </div>
+      <div class="brand-text">
+        <strong>{{ channel.channel_name }}</strong>
+        <span>Master Admin Access</span>
+      </div>
+    </a>
+    <a class="btn btn-secondary" href="/">&larr; Back to Website</a>
+  </nav>
+
+  <main class="auth-shell">
+    <div class="panel-card">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div class="pill-tag" style="margin-bottom:10px;">
+          <span class="pill-dot"></span>
+          Creator Studio &amp; AI Assistant
+        </div>
+        <h1 style="font-family:var(--font-display);font-size:1.75rem;">Master Admin Login</h1>
+        <p style="font-size:0.9rem;color:var(--ink-muted);">
+          Sign in with your master credentials to manage Happy Toonzz stats, looks, and your Voice AI Assistant.
+        </p>
+      </div>
+
+      {% if error %}
+        <div class="alert alert-err">{{ error }}</div>
+      {% endif %}
+
+      <form action="/login" method="post">
+        <input type="hidden" name="next_url" value="{{ next_url }}" />
+        <div class="field" style="margin-bottom:14px;">
+          <label for="loginUser">Master Username</label>
+          <input id="loginUser" name="username" type="text" required autocomplete="username" placeholder="Enter master username" />
+        </div>
+        <div class="field" style="margin-bottom:20px;">
+          <label for="loginPw">Master Password</label>
+          <input id="loginPw" name="password" type="password" required autocomplete="current-password" placeholder="Enter master password" />
+        </div>
+        <button class="btn btn-primary" type="submit" style="width:100%;">Unlock Admin Studio</button>
+      </form>
+    </div>
+  </main>
+</body>
+</html>

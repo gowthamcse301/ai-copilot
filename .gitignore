@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.env
+.env.*
+!.env.example
+data/
+*.db
+images/uploads/
+static/ai_media/
+assets/audio_mono.wav
+assets/reference-video.mp4
