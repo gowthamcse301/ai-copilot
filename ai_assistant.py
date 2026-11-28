@@ -12,6 +12,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -52,7 +53,7 @@ SYSTEM_PROMPT = """You are the Happy Toonzz Studio Copilot — a warm, positive,
 
 Personality & Response Style:
 - Always be uplifting, encouraging, clear, and proactive ("positive response").
-- Because replies may be read aloud via voice playback, write naturally in clean conversational sentences without cluttering with raw markdown code blocks or giant tables unless specifically needed. Keep replies focused and actionable (2-5 clear sentences after completing a tool task).
+- Because replies may be read aloud via voice playback, write naturally in clean conversational sentences without cluttering with raw markdown code blocks or giant tables unless specifically needed. Keep replies focused and actionable, usually 1-3 concise sentences.
 - If the creator speaks or writes in Tamil or Tanglish, respond naturally in warm Tamil or Tamil + English. Strictly use only pure Tamil script (தமிழ்) and English words — never mix characters from Malayalam, Bengali, Telugu, or other scripts.
 
 Mascot Context:
@@ -61,6 +62,7 @@ Mascot Context:
 
 Tool Usage Rules:
 - When asked to search the internet, trends, facts, news, or competitor/channel info -> call web_search.
+- When asked to find, open, or play an existing YouTube video -> call search_youtube_video; this embeds the best embeddable match in chat. Do not use generate_video for an existing video.
 - When asked to create, draw, or generate an image, celebration poster, thumbnail, or festival greeting -> call create_image (set use_mascot_reference=True and fill headline/subtitle/theme cleanly so our real Happy Toonzz mascot reference is used!).
 - When asked to generate/make a video/clip/reel -> call generate_video.
 - When asked to update subscriber/follower numbers, social links, bio, or tagline -> call update_channel_stats.
@@ -69,6 +71,18 @@ Tool Usage Rules:
 """
 
 TOOL_DECLARATIONS = [
+    {
+        "type": "function",
+        "name": "search_youtube_video",
+        "description": "Find one embeddable YouTube video for a request to watch or play a video, song, or clip. Use this instead of web_search when the user wants video playback.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Video title, topic, song, or descriptive search query"},
+            },
+            "required": ["query"],
+        },
+    },
     {
         "type": "function",
         "name": "web_search",
@@ -252,6 +266,77 @@ def tool_web_search(query: str, api_key: str) -> dict[str, Any]:
             except Exception:
                 continue
     return _free_web_search(query)
+
+
+def tool_search_youtube_video(query: str, api_key: str) -> dict[str, Any]:
+    """Search YouTube for one embeddable video without exposing the API key to the browser."""
+    search_query = query.strip()
+    if not api_key:
+        return {
+            "ok": False,
+            "error": "YouTube playback search is not configured. Add a YouTube Data API key under Admin Settings > YouTube Data API key.",
+        }
+    if not search_query:
+        return {"ok": False, "error": "Enter a topic or title to search YouTube."}
+
+    params = urllib.parse.urlencode(
+        {
+            "part": "snippet",
+            "type": "video",
+            "videoEmbeddable": "true",
+            "safeSearch": "strict",
+            "maxResults": "1",
+            "q": search_query,
+            "key": api_key,
+        }
+    )
+    request = urllib.request.Request(
+        f"https://www.googleapis.com/youtube/v3/search?{params}",
+        headers={"Accept": "application/json", "User-Agent": "HappyToonzzStudio/1.0"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 403:
+            return {
+                "ok": False,
+                "error": "YouTube search was denied. Check that the key is valid, YouTube Data API v3 is enabled, and quota is available.",
+            }
+        return {"ok": False, "error": f"YouTube search failed with HTTP {exc.code}."}
+    except (urllib.error.URLError, TimeoutError):
+        return {"ok": False, "error": "Could not reach YouTube search. Check the server connection and try again."}
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return {"ok": False, "error": "YouTube search returned an invalid response. Please try again."}
+
+    if not isinstance(data, dict):
+        return {"ok": False, "error": "YouTube search returned an invalid response. Please try again."}
+
+    items = data.get("items", [])
+    if not isinstance(items, list):
+        return {"ok": False, "error": "YouTube search returned an invalid response. Please try again."}
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        video = item.get("id", {})
+        snippet = item.get("snippet", {})
+        if not isinstance(video, dict):
+            continue
+        video_id = video.get("videoId")
+        if not isinstance(video_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+            continue
+        if not isinstance(snippet, dict):
+            snippet = {}
+        return {
+            "ok": True,
+            "video": {
+                "video_id": video_id,
+                "title": str(snippet.get("title", "")),
+                "channel_title": str(snippet.get("channelTitle", "")),
+            },
+        }
+    return {"ok": False, "error": "YouTube did not find an embeddable video for that search."}
 
 
 def _load_font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -570,7 +655,7 @@ def tool_create_image(
     full_prompt = f"{MASCOT_VISUAL_DESC}. Scene: {prompt}" if use_mascot_reference else prompt
     width, height = (1280, 720) if aspect == "wide" else ((1024, 1280) if aspect == "portrait" else (1024, 1024))
 
-    # 1. Try Gemini Nano Banana 2.1 with real reference-sheet.jpg when Paid Tier is active
+    # 1. Generate with Gemini Nano Banana 2.1, using the mascot reference when available.
     if api_key:
         try:
             client = _make_client(api_key, timeout_ms=25000)
@@ -594,8 +679,15 @@ def tool_create_image(
                     "media_type": "image",
                     "media_url": f"/static/ai_media/{fname}",
                 }
-        except Exception:
-            pass
+            return {
+                "ok": False,
+                "error": "Gemini returned no image. Check that the API key has image-generation access.",
+            }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "error": f"Gemini image generation failed ({type(exc).__name__}). Check the Render API key, model access, and billing.",
+            }
 
     # 2. When using mascot reference (or poster requested), render locally using REAL Happy Toonzz sprites & looks!
     if use_mascot_reference:
@@ -779,6 +871,19 @@ def _execute_tool(name: str, args: dict[str, Any], api_key: str) -> tuple[dict[s
         res = tool_web_search(str(args.get("query", "")), api_key)
         return res, media_items
 
+    if name == "search_youtube_video":
+        res = tool_search_youtube_video(str(args.get("query", "")), db.get_youtube_api_key())
+        if res.get("ok"):
+            video = res["video"]
+            media_items.append(
+                {
+                    "media_type": "youtube",
+                    "media_url": video["video_id"],
+                    "title": video["title"],
+                }
+            )
+        return res, media_items
+
     if name == "create_image":
         res = tool_create_image(
             prompt=str(args.get("prompt", "")),
@@ -844,7 +949,12 @@ def _execute_tool(name: str, args: dict[str, Any], api_key: str) -> tuple[dict[s
     return {"ok": False, "error": f"Unknown tool: {name}"}, media_items
 
 
-def run_assistant_turn(user_id: int, prompt: str) -> dict[str, Any]:
+def run_assistant_turn(
+    user_id: int,
+    prompt: str,
+    image_data: bytes | None = None,
+    image_mime_type: str = "",
+) -> dict[str, Any]:
     """Run one AI Studio turn with automatic function calling and save messages to SQLite."""
     clean_prompt = prompt.strip()
     if not clean_prompt:
@@ -867,7 +977,16 @@ def run_assistant_turn(user_id: int, prompt: str) -> dict[str, Any]:
     for item in past[:-1]:
         step_type = "user_input" if item["role"] == "user" else "model_output"
         history.append({"type": step_type, "content": [{"type": "text", "text": item["text"]}]})
-    history.append({"type": "user_input", "content": [{"type": "text", "text": clean_prompt}]})
+    current_content: list[dict[str, Any]] = [{"type": "text", "text": clean_prompt}]
+    if image_data:
+        current_content.append(
+            {
+                "type": "image",
+                "data": base64.b64encode(image_data).decode("ascii"),
+                "mime_type": image_mime_type,
+            }
+        )
+    history.append({"type": "user_input", "content": current_content})
 
     client = _make_client(api_key, timeout_ms=25000)
     collected_media: list[dict[str, Any]] = []

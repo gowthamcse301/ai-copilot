@@ -1,0 +1,31 @@
+{% extends "admin_base.html" %}
+
+{% block admin_content %}
+  <section class="panel-card admin-panel admin-page-panel">
+    <div class="admin-list-heading">
+      <div>
+        <div class="section-kicker">FAN &amp; COLLAB INBOX</div>
+        <h2>Messages</h2>
+      </div>
+      <span class="admin-count-badge">{{ messages|length }}</span>
+    </div>
+    {% if messages %}
+      <div class="admin-message-list">
+        {% for m in messages %}
+          <article class="admin-message-item">
+            <div class="admin-message-heading">
+              <strong>{{ m.name }}</strong>
+              <a href="mailto:{{ m.email }}">{{ m.email }}</a>
+            </div>
+            <p>{{ m.message }}</p>
+            <form action="/admin/messages/{{ m.id }}/delete" method="post">
+              <button class="btn btn-danger btn-sm" type="submit">Dismiss</button>
+            </form>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="admin-empty-state">No fan or collaboration messages yet.</p>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,39 @@
+<details class="assistant-settings-menu">
+  <summary class="assistant-settings-trigger">
+    <span aria-hidden="true">&#9881;</span>
+    <span>Settings</span>
+    <span class="assistant-settings-chevron" aria-hidden="true"></span>
+  </summary>
+  <div class="assistant-settings-panel">
+    <div class="assistant-settings-group">
+      <div class="assistant-settings-label">VOICE &amp; INPUT</div>
+      <label class="assistant-setting-row">
+        <span><strong>Auto voice reply</strong><small>Speak replies automatically</small></span>
+        <input type="checkbox" id="autoSpeakToggle" checked />
+      </label>
+      <label class="assistant-setting-row">
+        <span><strong>Wake word</strong><small>Start listening when you say “Hi”</small></span>
+        <input type="checkbox" id="wakeWordToggle" checked />
+      </label>
+      <label class="assistant-setting-row">
+        <span><strong>Hands-free loop</strong><small>Keep listening after each reply</small></span>
+        <input type="checkbox" id="passiveLoopToggle" checked />
+      </label>
+      <label class="assistant-setting-select">
+        <span>Voice input language</span>
+        <select id="speechLang" class="lang-select" aria-label="Voice input language">
+          <option value="en-IN">English (India)</option>
+          <option value="ta-IN" selected>Tamil (தமிழ்)</option>
+          <option value="en-US">English (US)</option>
+        </select>
+      </label>
+    </div>
+    <a class="assistant-settings-link" href="/admin/settings">
+      <span><strong>Engine settings</strong><small>API key and account</small></span>
+      <span aria-hidden="true">↗</span>
+    </a>
+    <form action="/admin/ai/clear" method="post" onsubmit="return confirm('Clear the AI conversation history?')">
+      <button class="assistant-clear-action" type="submit">Clear conversation</button>
+    </form>
+  </div>
+</details>

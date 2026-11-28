@@ -1,0 +1,725 @@
+    <section class="panel-card ai-studio-card assistant-console" id="ai-copilot" aria-label="AI engine console">
+      <div class="assistant-engine-layout">
+        <div class="assistant-engine-main">
+
+      {% if not has_api_key %}
+        <div class="alert alert-err" style="margin-top:12px;">
+          No Gemini API key configured yet. Add one in <a href="/admin/settings#api-settings">Settings</a> to activate full AI actions.
+        </div>
+      {% endif %}
+
+      <section class="assistant-output" aria-label="AI engine output">
+        <div class="assistant-output-heading">
+          <span><span class="assistant-output-led"></span> EXECUTION STREAM</span>
+          <small>SESSION OUTPUT</small>
+        </div>
+        <div class="ai-chat-feed assistant-output-feed" id="aiChatFeed">
+          {% if not ai_history %}
+            <div class="ai-bubble assistant assistant-system-entry">
+              <div class="ai-bubble-role">SYSTEM READY <span>CORE / 00</span></div>
+              <div>
+                Command interface ready. Speak or enter a task to begin a creative session.
+              </div>
+            </div>
+          {% endif %}
+          {% for item in ai_history %}
+            <div class="ai-bubble {{ item.role }}">
+              <div class="ai-bubble-role">
+                {{ 'COMMAND INPUT' if item.role == 'user' else 'ENGINE OUTPUT' }}
+                {% if item.role == 'assistant' %}
+                  <button class="speak-mini-btn" type="button" onclick="speakText(this.dataset.txt)" data-txt="{{ item.text }}">&#128266; Play Output</button>
+                {% endif %}
+              </div>
+              <div class="ai-bubble-text">{{ item.text }}</div>
+              {% if item.media_type == 'image' and item.media_url %}
+                <div class="ai-media-box">
+                  <img src="{{ item.media_url }}" alt="Generated AI image" />
+                  <div class="ai-media-actions">
+                    <a class="btn btn-secondary btn-sm" href="{{ item.media_url }}" download>Download Image</a>
+                    <button class="btn btn-primary btn-sm" type="button" onclick="publishLook('{{ item.media_url }}')">Publish to Looks Gallery</button>
+                  </div>
+                </div>
+              {% elif item.media_type == 'video' and item.media_url %}
+                <div class="ai-media-box">
+                  <video controls playsinline preload="metadata">
+                    <source src="{{ item.media_url }}" type="video/mp4" />
+                  </video>
+                  <div class="ai-media-actions">
+                    <a class="btn btn-primary btn-sm" href="{{ item.media_url }}" download>Download Video (.mp4)</a>
+                  </div>
+                </div>
+              {% elif item.media_type == 'youtube' and item.media_url and item.media_url|length == 11 %}
+                <div class="ai-media-box">
+                  <iframe
+                    width="560"
+                    height="315"
+                    src="https://www.youtube-nocookie.com/embed/{{ item.media_url }}"
+                    title="YouTube video player"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="assistant-command-dock">
+        <div id="voiceStatus" class="voice-status">SYSTEM IDLE — AWAITING COMMAND OR VOICE INPUT</div>
+        <div class="assistant-command-heading">
+          <span>COMMAND INPUT</span>
+          <span>TEXT · VOICE · IMAGE</span>
+        </div>
+
+        <form class="ai-input-bar" id="aiForm" onsubmit="return sendAiPrompt(event)">
+          <div class="assistant-composer-main">
+            <span class="assistant-command-prefix" aria-hidden="true">&gt;</span>
+            <input
+              id="aiInput"
+              type="text"
+              autocomplete="off"
+              aria-label="Enter a command for the AI engine"
+              placeholder="Enter a command for the AI engine..."
+            />
+            <button class="btn btn-primary" id="aiSendBtn" type="submit">Run Command</button>
+          </div>
+          <div class="assistant-composer-tools">
+            <button class="btn btn-secondary mic-btn" id="micBtn" type="button" onclick="toggleMic()">
+              &#127908; Speak
+            </button>
+            <button class="btn btn-secondary" id="attachImageBtn" type="button">&#128206; Attach image</button>
+            <input id="aiImageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+            <button class="btn btn-secondary" id="removeImageBtn" type="button" hidden>Remove image</button>
+          </div>
+        </form>
+        <div class="ai-attachment-status" id="aiImageStatus" aria-live="polite"></div>
+      </div>
+      <audio id="voiceAudioPlayer" style="display:none;"></audio>
+        </div>
+      </div>
+    </section>
+
+  <script>
+    const feed = document.getElementById('aiChatFeed');
+    const aiInput = document.getElementById('aiInput');
+    const aiSendBtn = document.getElementById('aiSendBtn');
+    const micBtn = document.getElementById('micBtn');
+    const voiceStatus = document.getElementById('voiceStatus');
+    const autoSpeakToggle = document.getElementById('autoSpeakToggle');
+    const wakeWordToggle = document.getElementById('wakeWordToggle');
+    const passiveLoopToggle = document.getElementById('passiveLoopToggle');
+    const speechLang = document.getElementById('speechLang');
+    const voicePlayer = document.getElementById('voiceAudioPlayer');
+    const attachImageBtn = document.getElementById('attachImageBtn');
+    const aiImageInput = document.getElementById('aiImageInput');
+    const aiImageStatus = document.getElementById('aiImageStatus');
+    const removeImageBtn = document.getElementById('removeImageBtn');
+    const maxImageBytes = 8 * 1024 * 1024;
+    let activeSpeechUrl = null;
+    let speechAbortController = null;
+    let speechDoneCallback = null;
+    let speechGeneration = 0;
+    let isSpeaking = false;
+    let monitorDuringCurrentSpeech = true;
+    let assistantSpeechText = '';
+    let wakeWordPermissionBlocked = false;
+
+    feed.scrollTop = feed.scrollHeight;
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function appendBubble(role, text, mediaList = []) {
+      const wrap = document.createElement('div');
+      wrap.className = 'ai-bubble ' + role;
+
+      const roleDiv = document.createElement('div');
+      roleDiv.className = 'ai-bubble-role';
+      roleDiv.innerHTML = role === 'user' ? 'COMMAND INPUT' : 'ENGINE OUTPUT';
+      if (role === 'assistant') {
+        const spk = document.createElement('button');
+        spk.type = 'button';
+        spk.className = 'speak-mini-btn';
+        spk.innerHTML = '&#128266; Play Output';
+        spk.addEventListener('click', () => speakText(text));
+        roleDiv.appendChild(spk);
+      }
+      wrap.appendChild(roleDiv);
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'ai-bubble-text';
+      textDiv.textContent = text;
+      wrap.appendChild(textDiv);
+
+      for (const m of mediaList) {
+        const box = document.createElement('div');
+        box.className = 'ai-media-box';
+        if (m.media_type === 'image') {
+          const img = document.createElement('img');
+          img.src = m.media_url;
+          img.alt = m.attached ? 'Image attached to the message' : 'Generated AI image';
+          if (m.attached) img.addEventListener('load', () => URL.revokeObjectURL(m.media_url), { once: true });
+          box.appendChild(img);
+
+          if (!m.attached) {
+            const acts = document.createElement('div');
+            acts.className = 'ai-media-actions';
+            const dl = document.createElement('a');
+            dl.className = 'btn btn-secondary btn-sm';
+            dl.href = m.media_url;
+            dl.download = '';
+            dl.textContent = 'Download Image';
+            const pub = document.createElement('button');
+            pub.type = 'button';
+            pub.className = 'btn btn-primary btn-sm';
+            pub.textContent = 'Publish to Looks Gallery';
+            pub.addEventListener('click', () => publishLook(m.media_url));
+            acts.appendChild(dl);
+            acts.appendChild(pub);
+            box.appendChild(acts);
+          }
+        } else if (m.media_type === 'video') {
+          const vid = document.createElement('video');
+          vid.controls = true;
+          vid.playsInline = true;
+          const src = document.createElement('source');
+          src.src = m.media_url;
+          src.type = 'video/mp4';
+          vid.appendChild(src);
+          box.appendChild(vid);
+
+          const acts = document.createElement('div');
+          acts.className = 'ai-media-actions';
+          const dl = document.createElement('a');
+          dl.className = 'btn btn-primary btn-sm';
+          dl.href = m.media_url;
+          dl.download = '';
+          dl.textContent = 'Download Video (.mp4)';
+          acts.appendChild(dl);
+          box.appendChild(acts);
+        } else if (m.media_type === 'youtube') {
+          if (!/^[A-Za-z0-9_-]{11}$/.test(m.media_url || '')) {
+            const error = document.createElement('p');
+            error.textContent = 'This YouTube result could not be embedded.';
+            box.appendChild(error);
+          } else {
+            const iframe = document.createElement('iframe');
+            iframe.width = '560';
+            iframe.height = '315';
+            iframe.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(m.media_url) + '?autoplay=1&playsinline=1';
+            iframe.title = m.title ? 'YouTube video: ' + m.title : 'YouTube video player';
+            iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            iframe.allowFullscreen = true;
+            box.appendChild(iframe);
+          }
+        }
+        wrap.appendChild(box);
+      }
+
+      feed.appendChild(wrap);
+      feed.scrollTop = feed.scrollHeight;
+      return wrap;
+    }
+
+    async function publishLook(imageUrl) {
+      const title = prompt('Enter Look Title for the gallery:', 'Happy Toonzz Special');
+      if (!title) return;
+      const body = new FormData();
+      body.append('image_url', imageUrl);
+      body.append('title', title);
+      body.append('subtitle', 'Created with Happy Toonzz AI Studio');
+      const res = await fetch('/admin/ai/publish', { method: 'POST', body });
+      const data = await res.json();
+      if (data.ok) {
+        voiceStatus.textContent = 'Published "' + title + '" to the live Looks gallery!';
+        speakText('Awesome! I published ' + title + ' right onto your live Happy Toonzz website!');
+      } else {
+        voiceStatus.textContent = 'Publish failed: ' + (data.error || 'unknown error');
+      }
+    }
+
+    function updateMicButton() {
+      micBtn.innerHTML = isSpeaking
+        ? '&#127908; Interrupt &amp; Speak'
+        : (isWakeWordMonitor
+          ? '&#128276; Wake Word On'
+          : (listening ? '&#128308; Listening...' : '&#127908; Speak'));
+    }
+
+    function finishSpeech(generation) {
+      if (generation !== speechGeneration || !isSpeaking) return;
+      isSpeaking = false;
+      if (isInterruptMonitor || isWakeWordMonitor) stopRecognition();
+      if (activeSpeechUrl) {
+        URL.revokeObjectURL(activeSpeechUrl);
+        activeSpeechUrl = null;
+      }
+      voiceStatus.textContent = 'Engine ready — awaiting next command.';
+      updateMicButton();
+      const callback = speechDoneCallback;
+      speechDoneCallback = null;
+      if (callback) callback();
+    }
+
+    function stopSpeech() {
+      speechGeneration += 1;
+      isSpeaking = false;
+      monitorDuringCurrentSpeech = false;
+      speechDoneCallback = null;
+      if (isInterruptMonitor || isWakeWordMonitor) stopRecognition();
+      voicePlayer.onended = null;
+      voicePlayer.onerror = null;
+      voicePlayer.onplay = null;
+      voicePlayer.pause();
+      voicePlayer.removeAttribute('src');
+      voicePlayer.load();
+      if (speechAbortController) {
+        speechAbortController.abort();
+        speechAbortController = null;
+      }
+      if (activeSpeechUrl) {
+        URL.revokeObjectURL(activeSpeechUrl);
+        activeSpeechUrl = null;
+      }
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      updateMicButton();
+    }
+
+    function speakWithBrowserVoice(text, generation) {
+      if (!('speechSynthesis' in window)) return false;
+      const lang = speechLang.value || 'ta-IN';
+      const prefix = lang.split('-')[0].toLowerCase();
+      const voices = window.speechSynthesis.getVoices();
+      const voice = voices.find((item) => item.lang.toLowerCase() === lang.toLowerCase())
+        || voices.find((item) => item.lang.toLowerCase().startsWith(prefix + '-'));
+      if (!voice) return false;
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      utterance.voice = voice;
+      utterance.rate = 1;
+      utterance.onend = () => finishSpeech(generation);
+      utterance.onerror = () => finishSpeech(generation);
+      if (monitorDuringCurrentSpeech) startListening(true);
+      window.speechSynthesis.speak(utterance);
+      return true;
+    }
+
+    function speakWithBrowserFallback(text, generation) {
+      if (generation !== speechGeneration || !isSpeaking) return;
+      if (!('speechSynthesis' in window)) {
+        finishSpeech(generation);
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = speechLang.value || 'ta-IN';
+      utterance.rate = 1.04;
+      utterance.pitch = 1.08;
+      utterance.onend = () => finishSpeech(generation);
+      utterance.onerror = () => finishSpeech(generation);
+      if (monitorDuringCurrentSpeech) startListening(true);
+      window.speechSynthesis.speak(utterance);
+    }
+
+    async function speakText(text, onDone = null, monitorForInterrupt = true) {
+      if (!text) { if (onDone) onDone(); return; }
+      stopSpeech();
+      const generation = speechGeneration;
+      speechDoneCallback = onDone;
+      isSpeaking = true;
+      monitorDuringCurrentSpeech = monitorForInterrupt;
+      assistantSpeechText = text;
+      updateMicButton();
+      voiceStatus.textContent = 'Speaking — say “iru” or “wait” to interrupt.';
+
+      if (speakWithBrowserVoice(text, generation)) return;
+
+      const controller = new AbortController();
+      speechAbortController = controller;
+      try {
+        const body = new FormData();
+        body.append('text', text);
+        const res = await fetch('/admin/ai/tts', { method: 'POST', body, signal: controller.signal });
+        if (generation !== speechGeneration) return;
+        if (res.status === 200) {
+          const blob = await res.blob();
+          if (speechAbortController === controller) speechAbortController = null;
+          if (generation !== speechGeneration) return;
+          activeSpeechUrl = URL.createObjectURL(blob);
+          voicePlayer.src = activeSpeechUrl;
+          voicePlayer.onended = () => finishSpeech(generation);
+          voicePlayer.onerror = () => speakWithBrowserFallback(text, generation);
+          voicePlayer.onplay = () => {
+            if (monitorDuringCurrentSpeech) startListening(true);
+          };
+          await voicePlayer.play();
+          return;
+        }
+        if (speechAbortController === controller) speechAbortController = null;
+      } catch (e) {
+        if (speechAbortController === controller) speechAbortController = null;
+        if (generation !== speechGeneration) return;
+      }
+      speakWithBrowserFallback(text, generation);
+    }
+
+    function containsInterruptPhrase(transcript) {
+      const interruptPattern = /(?:^|[\s,，。.!?])(?:wait|iru)(?=$|[\s,，。.!?])|(?:^|[\s,，。.!?])இரு(?:ங்க)?(?=$|[\s,，。.!?])/iu;
+      return interruptPattern.test(transcript) && !interruptPattern.test(assistantSpeechText);
+    }
+
+    function handleVoiceInterrupt() {
+      if (!isSpeaking || !isInterruptMonitor) return;
+      stopRecognition();
+      stopSpeech();
+      voiceStatus.textContent = 'Interrupted — listening for you.';
+      const acknowledgement = speechLang.value === 'ta-IN' ? 'சொல்லுங்க, கேட்கிறேன்.' : 'Go ahead, I’m listening.';
+      speakText(acknowledgement, () => startListening(), false);
+    }
+
+    function findWakeWord(transcript) {
+      return /(?:^|[\s,，。.!?])hi(?=$|[\s,，。.!?])/iu.exec(transcript);
+    }
+
+    function handleWakeWord(transcript, match) {
+      if (!isWakeWordMonitor) return;
+      stopRecognition();
+      const request = transcript.slice(match.index + match[0].length).replace(/^[\s,，。.!?]+/, '').trim();
+      if (request) {
+        aiInput.value = request;
+        sendAiPrompt(null, true);
+        return;
+      }
+      const acknowledgement = speechLang.value === 'ta-IN' ? 'சொல்லுங்க, கேட்கிறேன்.' : 'Go ahead, I’m listening.';
+      speakText(acknowledgement, () => startListening(), false);
+    }
+
+    function updateSelectedImageStatus() {
+      const image = aiImageInput.files[0];
+      if (image && image.size <= maxImageBytes) {
+        aiImageStatus.textContent = image.name + ' (' + (image.size / 1024 / 1024).toFixed(1) + ' MB)';
+        removeImageBtn.hidden = false;
+        return;
+      }
+      if (image) {
+        aiImageStatus.textContent = 'Image must be 8 MB or smaller.';
+        aiImageInput.value = '';
+      } else {
+        aiImageStatus.textContent = '';
+      }
+      removeImageBtn.hidden = true;
+    }
+
+    attachImageBtn.addEventListener('click', () => aiImageInput.click());
+    aiImageInput.addEventListener('change', updateSelectedImageStatus);
+    wakeWordToggle.addEventListener('change', () => {
+      wakeWordPermissionBlocked = false;
+      if (wakeWordToggle.checked) {
+        if (!listening && !isSpeaking) startListening(false, true);
+      } else if (isWakeWordMonitor) {
+        stopRecognition();
+        voiceStatus.textContent = 'Wake word off — click Speak whenever you want to talk.';
+      }
+    });
+    removeImageBtn.addEventListener('click', () => {
+      aiImageInput.value = '';
+      updateSelectedImageStatus();
+    });
+
+    function syncChannelForm(ch) {
+      if (!ch) return false;
+      const fieldMap = {
+        cName: 'channel_name',
+        cLoc: 'location',
+        cTag: 'tagline',
+        cBio: 'bio',
+        ytHandle: 'youtube_handle',
+        ytUrl: 'youtube_url',
+        ytSubs: 'youtube_subs',
+        ytVids: 'youtube_videos',
+        igHandle: 'instagram_handle',
+        igUrl: 'instagram_url',
+        igFoll: 'instagram_followers',
+        fbHandle: 'facebook_handle',
+        fbUrl: 'facebook_url',
+        fbFoll: 'facebook_followers',
+      };
+      let updatedCount = 0;
+      for (const [elId, key] of Object.entries(fieldMap)) {
+        const el = document.getElementById(elId);
+        if (!el || ch[key] === undefined || ch[key] === null) continue;
+        const nextVal = String(ch[key]);
+        if (el.value !== nextVal) {
+          el.value = nextVal;
+          el.style.transition = 'box-shadow 0.3s ease, background-color 0.3s ease';
+          el.style.boxShadow = '0 0 0 3px rgba(56, 203, 137, 0.45)';
+          el.style.backgroundColor = '#f0fdf6';
+          setTimeout(() => {
+            el.style.boxShadow = '';
+            el.style.backgroundColor = '';
+          }, 2600);
+          updatedCount += 1;
+        }
+      }
+      const notice = document.getElementById('channelLiveNotice');
+      if (notice) {
+        notice.textContent = updatedCount > 0
+          ? 'Synced live by AI Assistant (' + updatedCount + ' field' + (updatedCount > 1 ? 's' : '') + ' updated on website & form)!'
+          : 'Verified live channel stats from website database.';
+        notice.style.display = 'block';
+      }
+      return updatedCount > 0;
+    }
+
+    let isBusy = false;
+    async function sendAiPrompt(e, fromVoice = false) {
+      if (e) e.preventDefault();
+      if (isBusy) return false;
+      const selectedImage = aiImageInput.files[0] || null;
+      const prompt = aiInput.value.trim() || (selectedImage ? 'Please describe the attached image.' : '');
+      if (!prompt) return false;
+      if (selectedImage && selectedImage.size > maxImageBytes) {
+        updateSelectedImageStatus();
+        return false;
+      }
+
+      stopSpeech();
+      isBusy = true;
+      aiSendBtn.disabled = true;
+      attachImageBtn.disabled = true;
+      removeImageBtn.disabled = true;
+      aiImageInput.disabled = true;
+      aiInput.value = '';
+      const previewUrl = selectedImage ? URL.createObjectURL(selectedImage) : '';
+      appendBubble(
+        'user',
+        prompt,
+        selectedImage ? [{ media_type: 'image', media_url: previewUrl, attached: true }] : [],
+      );
+      const thinkingBubble = appendBubble('assistant', 'Executing command... (tools may run)');
+      voiceStatus.textContent = 'Engine processing command...';
+
+      try {
+        const body = new FormData();
+        body.append('prompt', prompt);
+        if (selectedImage) body.append('image_file', selectedImage);
+        const res = await fetch('/admin/ai/chat', { method: 'POST', body });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || data.detail || 'The request could not be completed.');
+        thinkingBubble.remove();
+        aiImageInput.value = '';
+        updateSelectedImageStatus();
+
+        const reply = data.reply || 'All done!';
+        appendBubble('assistant', reply, data.media || []);
+
+        const channelSynced = data.channel ? syncChannelForm(data.channel) : false;
+
+        const maybeLoop = () => {
+          if (passiveLoopToggle.checked) {
+            setTimeout(() => startListening(), 350);
+          } else if (wakeWordToggle.checked) {
+            setTimeout(() => startListening(false, true), 350);
+          }
+        };
+
+        if (autoSpeakToggle.checked || fromVoice) {
+          speakText(reply, maybeLoop);
+          if (channelSynced) {
+            voiceStatus.textContent = 'Channel stats synced live & speaking positive response...';
+          }
+        } else {
+          voiceStatus.textContent = channelSynced ? 'Done — channel stats synced live!' : 'Done!';
+          maybeLoop();
+        }
+      } catch (err) {
+        thinkingBubble.remove();
+        if (!aiInput.value) aiInput.value = prompt;
+        const message = err instanceof Error ? err.message : 'Please try once more.';
+        appendBubble('assistant', 'Sorry, I could not complete that request. ' + message);
+        voiceStatus.textContent = 'Request failed — you can retry or edit your message.';
+      } finally {
+        isBusy = false;
+        aiSendBtn.disabled = false;
+        attachImageBtn.disabled = false;
+        removeImageBtn.disabled = false;
+        aiImageInput.disabled = false;
+      }
+      return false;
+    }
+
+    // Browser Web Speech Recognition (Voice Input)
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let listening = false;
+    let isInterruptMonitor = false;
+    let isWakeWordMonitor = false;
+
+    function stopRecognition() {
+      const activeRecognition = recognition;
+      recognition = null;
+      listening = false;
+      isInterruptMonitor = false;
+      isWakeWordMonitor = false;
+      micBtn.classList.remove('recording');
+      if (activeRecognition) {
+        activeRecognition.onend = null;
+        activeRecognition.onerror = null;
+        activeRecognition.onresult = null;
+        try {
+          activeRecognition.abort();
+        } catch (error) {
+          voiceStatus.textContent = 'Could not stop voice recognition. Please try the mic button.';
+        }
+      }
+      updateMicButton();
+    }
+
+    function startListening(interruptMonitor = false, wakeWordMonitor = false) {
+      if (!SpeechRec) {
+        voiceStatus.textContent = wakeWordMonitor
+          ? 'Wake word requires Chrome or Edge speech recognition.'
+          : 'Voice mic requires Chrome / Edge (Web Speech API). Type your request below!';
+        return;
+      }
+      if (listening && recognition) return;
+      recognition = new SpeechRec();
+      const activeRecognition = recognition;
+      const monitoringInterrupts = interruptMonitor;
+      const monitoringWakeWord = wakeWordMonitor;
+      isInterruptMonitor = interruptMonitor;
+      isWakeWordMonitor = wakeWordMonitor;
+      recognition.lang = wakeWordMonitor ? 'en-IN' : (speechLang.value || 'ta-IN');
+      recognition.interimResults = true;
+      recognition.continuous = interruptMonitor || wakeWordMonitor;
+
+      listening = true;
+      micBtn.classList.add('recording');
+      updateMicButton();
+      voiceStatus.textContent = monitoringWakeWord
+        ? 'Say “Hi” to start talking.'
+        : (interruptMonitor
+          ? 'Speaking — say “iru” or “wait” to interrupt.'
+          : 'Listening (' + recognition.lang + ') — speak clearly!');
+
+      let finalTranscript = '';
+      activeRecognition.onresult = (evt) => {
+        if (monitoringWakeWord) {
+          if (!evt.results.length || !evt.results[evt.results.length - 1].isFinal) return;
+          const transcript = Array.from(evt.results)
+            .map((result) => result[0].transcript)
+            .join(' ');
+          const match = findWakeWord(transcript);
+          if (match) handleWakeWord(transcript, match);
+          return;
+        }
+        if (monitoringInterrupts) {
+          const transcript = Array.from(evt.results)
+            .map((result) => result[0].transcript)
+            .join(' ');
+          if (containsInterruptPhrase(transcript)) handleVoiceInterrupt();
+          return;
+        }
+        let interim = '';
+        for (let i = evt.resultIndex; i < evt.results.length; i++) {
+          const piece = evt.results[i][0].transcript;
+          if (evt.results[i].isFinal) finalTranscript += piece;
+          else interim += piece;
+        }
+        aiInput.value = (finalTranscript + ' ' + interim).trim();
+      };
+
+      activeRecognition.onerror = (evt) => {
+        const wasInterruptMonitor = monitoringInterrupts;
+        const wasWakeWordMonitor = monitoringWakeWord;
+        listening = false;
+        micBtn.classList.remove('recording');
+        updateMicButton();
+        if (wasInterruptMonitor && ['not-allowed', 'service-not-allowed', 'audio-capture'].includes(evt.error)) {
+          isInterruptMonitor = false;
+        }
+        if (wasWakeWordMonitor && ['not-allowed', 'service-not-allowed', 'audio-capture'].includes(evt.error)) {
+          isWakeWordMonitor = false;
+          wakeWordPermissionBlocked = true;
+        }
+        voiceStatus.textContent = wasWakeWordMonitor
+          ? 'Wake word is unavailable (' + evt.error + '). Allow microphone access or click Speak.'
+          : (wasInterruptMonitor
+            ? 'Voice interruption is unavailable (' + evt.error + '). Click Interrupt & Speak to talk.'
+            : 'Mic stopped (' + evt.error + '). Click Speak to try again.');
+      };
+
+      activeRecognition.onend = () => {
+        if (recognition !== activeRecognition) return;
+        const shouldRestartMonitor = monitoringInterrupts && isInterruptMonitor && isSpeaking;
+        const shouldRestartWakeWord = monitoringWakeWord && isWakeWordMonitor && wakeWordToggle.checked && !wakeWordPermissionBlocked;
+        recognition = null;
+        listening = false;
+        micBtn.classList.remove('recording');
+        updateMicButton();
+        if (monitoringInterrupts) {
+          if (shouldRestartMonitor) {
+            setTimeout(() => {
+              if (isSpeaking && monitorDuringCurrentSpeech) startListening(true);
+            }, 250);
+          }
+          return;
+        }
+        if (monitoringWakeWord) {
+          if (shouldRestartWakeWord) {
+            setTimeout(() => {
+              if (!listening && !isSpeaking && wakeWordToggle.checked && !wakeWordPermissionBlocked) {
+                startListening(false, true);
+              }
+            }, 250);
+          }
+          return;
+        }
+        if (aiInput.value.trim()) {
+          sendAiPrompt(null, true);
+        } else {
+          voiceStatus.textContent = 'Ready — click Speak to talk!';
+        }
+      };
+
+      try {
+        activeRecognition.start();
+      } catch (error) {
+        const reason = error instanceof Error ? error.name : 'browser error';
+        recognition = null;
+        listening = false;
+        isInterruptMonitor = false;
+        isWakeWordMonitor = false;
+        if (monitoringWakeWord) wakeWordPermissionBlocked = true;
+        micBtn.classList.remove('recording');
+        updateMicButton();
+        voiceStatus.textContent = monitoringWakeWord
+          ? 'Wake word could not start (' + reason + '). Allow microphone access and enable Wake Word again.'
+          : (interruptMonitor
+            ? 'Automatic interruption could not start (' + reason + '). Click Interrupt & Speak to talk.'
+            : 'Microphone could not start (' + reason + '). Check browser permission and try Speak again.');
+      }
+    }
+
+    function toggleMic() {
+      if (isSpeaking) {
+        stopSpeech();
+        startListening();
+      } else if (isWakeWordMonitor) {
+        stopRecognition();
+        startListening();
+      } else if (listening && recognition && !isInterruptMonitor) {
+        recognition.stop();
+      } else {
+        startListening();
+      }
+    }
+
+    if (wakeWordToggle.checked) startListening(false, true);
+  </script>

@@ -6,6 +6,7 @@ import json
 import os
 import secrets
 from contextlib import asynccontextmanager
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -14,6 +15,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from PIL import Image, UnidentifiedImageError
 
 import ai_assistant
 import db
@@ -209,11 +211,50 @@ async def logout(request: Request):
 # ---------------------------------------------------------------------------
 
 
-def _require_admin(request: Request) -> dict[str, Any] | RedirectResponse:
+def _require_admin(request: Request, next_url: str = "/admin") -> dict[str, Any] | RedirectResponse:
     admin = _current_admin(request)
     if not admin:
-        return RedirectResponse(url="/login?next=/admin", status_code=303)
+        return RedirectResponse(url=f"/login?next={next_url}", status_code=303)
     return admin
+
+
+def _render_admin_page(
+    request: Request,
+    template_name: str,
+    active_page: str,
+    page_title: str,
+    page_description: str,
+    saved: str = "",
+    error: str = "",
+    next_url: str = "/admin",
+    admin_user: dict[str, Any] | None = None,
+    **page_context: Any,
+) -> HTMLResponse | RedirectResponse:
+    auth = admin_user if admin_user is not None else _require_admin(request, next_url)
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    api_key = db.get_gemini_api_key()
+    youtube_api_key = db.get_youtube_api_key()
+    context = {
+        "user": auth,
+        "channel": db.get_channel_profile(),
+        "has_api_key": bool(api_key),
+        "masked_api_key": f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else ("Configured" if api_key else ""),
+        "has_youtube_api_key": bool(youtube_api_key),
+        "masked_youtube_api_key": (
+            f"{youtube_api_key[:4]}...{youtube_api_key[-4:]}"
+            if len(youtube_api_key) > 8
+            else ("Configured" if youtube_api_key else "")
+        ),
+        "active_admin_page": active_page,
+        "page_title": page_title,
+        "page_description": page_description,
+        "saved": saved,
+        "error": error,
+        **page_context,
+    }
+    return templates.TemplateResponse(request, template_name, context)
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -225,34 +266,155 @@ async def admin_dashboard(
     auth = _require_admin(request)
     if isinstance(auth, RedirectResponse):
         return auth
-
-    api_key = db.get_gemini_api_key()
-    masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else ("Configured" if api_key else "")
-
-    return templates.TemplateResponse(
+    return _render_admin_page(
         request,
         "admin.html",
-        {
-            "user": auth,
-            "channel": db.get_channel_profile(),
-            "looks": db.get_looks(),
-            "messages": db.list_messages(),
-            "ai_history": db.list_ai_messages(auth["id"], limit=30),
-            "has_api_key": bool(api_key),
-            "masked_api_key": masked_key,
-            "saved": saved,
-            "error": error,
-        },
+        "overview",
+        "Overview",
+        "Current channel and workspace statistics.",
+        saved=saved,
+        error=error,
+        admin_user=auth,
+        stats=db.get_admin_counts(),
+    )
+
+
+@app.get("/admin/channel", response_class=HTMLResponse)
+async def admin_channel_page(request: Request, saved: str = "", error: str = ""):
+    return _render_admin_page(
+        request,
+        "admin_channel.html",
+        "channel",
+        "Channel profile",
+        "Channel identity and social statistics.",
+        saved=saved,
+        error=error,
+        next_url="/admin/channel",
+    )
+
+
+@app.get("/admin/looks", response_class=HTMLResponse)
+async def admin_looks_page(request: Request, saved: str = "", error: str = ""):
+    auth = _require_admin(request, "/admin/looks")
+    if isinstance(auth, RedirectResponse):
+        return auth
+    return _render_admin_page(
+        request,
+        "admin_looks.html",
+        "looks",
+        "Character looks",
+        "Manage the looks displayed in your gallery.",
+        saved=saved,
+        error=error,
+        next_url="/admin/looks",
+        admin_user=auth,
+        looks=db.get_looks(),
+    )
+
+
+@app.get("/admin/inbox", response_class=HTMLResponse)
+async def admin_inbox_page(request: Request, saved: str = "", error: str = ""):
+    auth = _require_admin(request, "/admin/inbox")
+    if isinstance(auth, RedirectResponse):
+        return auth
+    return _render_admin_page(
+        request,
+        "admin_inbox.html",
+        "inbox",
+        "Fan inbox",
+        "Messages received from your website.",
+        saved=saved,
+        error=error,
+        next_url="/admin/inbox",
+        admin_user=auth,
+        messages=db.list_messages(),
+    )
+
+
+@app.get("/admin/settings", response_class=HTMLResponse)
+async def admin_settings_page(request: Request, saved: str = "", error: str = ""):
+    return _render_admin_page(
+        request,
+        "admin_settings.html",
+        "settings",
+        "Settings",
+        "Manage administrator credentials and AI engine access.",
+        saved=saved,
+        error=error,
+        next_url="/admin/settings",
+    )
+
+
+@app.get("/admin/assistant", response_class=HTMLResponse)
+async def admin_assistant_page(
+    request: Request,
+    saved: str = "",
+    error: str = "",
+):
+    auth = _require_admin(request, "/admin/assistant")
+    if isinstance(auth, RedirectResponse):
+        return auth
+
+    return _render_admin_page(
+        request,
+        "assistant.html",
+        "assistant",
+        "AI Engine",
+        "Voice, vision, and command workspace.",
+        saved=saved,
+        error=error,
+        next_url="/admin/assistant",
+        admin_user=auth,
+        ai_history=db.list_ai_messages(auth["id"], limit=30),
     )
 
 
 @app.post("/admin/ai/chat")
-def admin_ai_chat(request: Request, prompt: str = Form(...)):
+def admin_ai_chat(
+    request: Request,
+    prompt: str = Form(""),
+    image_file: UploadFile | None = File(default=None),
+):
     _check_same_origin(request)
     auth = _require_admin(request)
     if isinstance(auth, RedirectResponse):
         return JSONResponse({"error": "Authentication required"}, status_code=401)
-    result = ai_assistant.run_assistant_turn(auth["id"], prompt)
+
+    image_data = None
+    image_mime_type = ""
+    if image_file is not None:
+        image_data = image_file.file.read(MAX_UPLOAD_BYTES + 1)
+        if len(image_data) > MAX_UPLOAD_BYTES:
+            return JSONResponse({"error": "Images must be 8 MB or smaller."}, status_code=413)
+        try:
+            with Image.open(BytesIO(image_data)) as image:
+                image_format = image.format
+                width, height = image.size
+                if width * height > 25_000_000:
+                    return JSONResponse({"error": "Image dimensions are too large."}, status_code=413)
+                image.verify()
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+            return JSONResponse({"error": "Please attach a valid PNG, JPEG, or WebP image."}, status_code=400)
+
+        image_mime_type = {
+            "JPEG": "image/jpeg",
+            "PNG": "image/png",
+            "WEBP": "image/webp",
+        }.get(image_format or "", "")
+        if not image_mime_type:
+            return JSONResponse({"error": "Only PNG, JPEG, and WebP images are supported."}, status_code=415)
+
+    if not prompt.strip() and image_data:
+        prompt = "Please describe the attached image."
+    if not prompt.strip():
+        return JSONResponse({"error": "Enter a message or attach an image."}, status_code=400)
+
+    result = ai_assistant.run_assistant_turn(
+        auth["id"],
+        prompt,
+        image_data=image_data,
+        image_mime_type=image_mime_type,
+    )
     return JSONResponse(result)
 
 
@@ -276,7 +438,7 @@ async def admin_ai_clear(request: Request):
     if isinstance(auth, RedirectResponse):
         return auth
     db.clear_ai_messages(auth["id"])
-    return RedirectResponse(url="/admin?saved=ai_cleared", status_code=303)
+    return RedirectResponse(url="/admin/assistant?saved=ai_cleared", status_code=303)
 
 
 @app.post("/admin/ai/publish")
@@ -313,7 +475,7 @@ async def admin_update_credentials(
 
     verified = db.authenticate_admin(auth["username"], current_password)
     if not verified:
-        return RedirectResponse(url="/admin?error=wrong_password", status_code=303)
+        return RedirectResponse(url="/admin/settings?error=wrong_password", status_code=303)
 
     err = db.update_admin_credentials(
         auth["id"],
@@ -321,8 +483,8 @@ async def admin_update_credentials(
         new_password=new_password.strip() or None,
     )
     if err:
-        return RedirectResponse(url="/admin?error=cred_invalid", status_code=303)
-    return RedirectResponse(url="/admin?saved=credentials", status_code=303)
+        return RedirectResponse(url="/admin/settings?error=cred_invalid", status_code=303)
+    return RedirectResponse(url="/admin/settings?saved=credentials", status_code=303)
 
 
 @app.post("/admin/apikey")
@@ -335,7 +497,20 @@ async def admin_update_apikey(
     if isinstance(auth, RedirectResponse):
         return auth
     db.set_setting("gemini_api_key", gemini_api_key.strip())
-    return RedirectResponse(url="/admin?saved=apikey", status_code=303)
+    return RedirectResponse(url="/admin/settings?saved=apikey", status_code=303)
+
+
+@app.post("/admin/youtube-apikey")
+async def admin_update_youtube_apikey(
+    request: Request,
+    youtube_api_key: str = Form(...),
+):
+    _check_same_origin(request)
+    auth = _require_admin(request)
+    if isinstance(auth, RedirectResponse):
+        return auth
+    db.set_setting("youtube_api_key", youtube_api_key.strip())
+    return RedirectResponse(url="/admin/settings?saved=youtube_apikey", status_code=303)
 
 
 @app.post("/admin/channel")
@@ -379,7 +554,7 @@ async def admin_update_channel(
             "facebook_followers": facebook_followers,
         }
     )
-    return RedirectResponse(url="/admin?saved=channel", status_code=303)
+    return RedirectResponse(url="/admin/channel?saved=channel", status_code=303)
 
 
 @app.post("/admin/looks")
@@ -399,11 +574,11 @@ async def admin_add_look(
 
     ext = Path(image_file.filename or "").suffix.lower()
     if ext not in ALLOWED_IMAGE_EXTS:
-        return RedirectResponse(url="/admin?error=invalid_image", status_code=303)
+        return RedirectResponse(url="/admin/looks?error=invalid_image", status_code=303)
 
     payload = await image_file.read()
     if not payload or len(payload) > MAX_UPLOAD_BYTES:
-        return RedirectResponse(url="/admin?error=image_too_large", status_code=303)
+        return RedirectResponse(url="/admin/looks?error=image_too_large", status_code=303)
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     fname = f"look_{secrets.token_hex(6)}{ext}"
@@ -417,7 +592,7 @@ async def admin_add_look(
         image_path=f"images/uploads/{fname}",
         description=description,
     )
-    return RedirectResponse(url="/admin?saved=look", status_code=303)
+    return RedirectResponse(url="/admin/looks?saved=look", status_code=303)
 
 
 @app.post("/admin/looks/{look_id}/delete")
@@ -432,7 +607,7 @@ async def admin_delete_look(request: Request, look_id: int):
         file_path = (BASE_DIR / removed_path).resolve()
         if str(file_path).startswith(str(UPLOAD_DIR.resolve())) and file_path.exists():
             file_path.unlink(missing_ok=True)
-    return RedirectResponse(url="/admin?saved=look_deleted", status_code=303)
+    return RedirectResponse(url="/admin/looks?saved=look_deleted", status_code=303)
 
 
 @app.post("/admin/messages/{message_id}/delete")
@@ -443,7 +618,7 @@ async def admin_delete_message(request: Request, message_id: int):
         return auth
 
     db.delete_message(message_id)
-    return RedirectResponse(url="/admin?saved=message_deleted", status_code=303)
+    return RedirectResponse(url="/admin/inbox?saved=message_deleted", status_code=303)
 
 
 # ---------------------------------------------------------------------------

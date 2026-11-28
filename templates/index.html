@@ -35,7 +35,7 @@
     <div class="nav-actions">
       <button class="btn btn-secondary" id="openSlideshowBtn" type="button">&#9654; Slideshow</button>
       {% if admin %}
-        <a class="user-chip" href="/admin">&#10024; AI &amp; Admin Studio ({{ admin.username }})</a>
+        <a class="user-chip" href="/admin/assistant">&#10024; AI Assistant ({{ admin.username }})</a>
         <form action="/logout" method="post" style="display:inline;">
           <button class="btn btn-secondary" type="submit">Logout</button>
         </form>
@@ -119,7 +119,7 @@
         <p>Follow Happy Toonzz across platforms. Log into the Admin Studio to update follower numbers or ask your AI Assistant anytime.</p>
       </div>
       {% if admin %}
-        <a class="btn btn-primary" href="/admin">Open AI &amp; Admin Studio</a>
+        <a class="btn btn-primary" href="/admin/assistant">Open AI Assistant</a>
       {% else %}
         <a class="btn btn-secondary" href="/login?next=/admin">Master Admin Login</a>
       {% endif %}

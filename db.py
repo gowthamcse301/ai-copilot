@@ -318,6 +318,13 @@ def init_db() -> str | None:
                 (env_key,),
             )
 
+        youtube_env_key = os.environ.get("YOUTUBE_API_KEY", "").strip()
+        if youtube_env_key:
+            conn.execute(
+                "INSERT OR IGNORE INTO app_settings (key, value) VALUES ('youtube_api_key', ?)",
+                (youtube_env_key,),
+            )
+
         conn.commit()
     return generated_pw
 
@@ -456,8 +463,13 @@ def set_setting(key: str, value: str) -> None:
 
 
 def get_gemini_api_key() -> str:
-    """Return active Gemini API key from SQLite settings or process environment."""
-    return get_setting("gemini_api_key") or os.environ.get("GEMINI_API_KEY", "").strip()
+    """Prefer the deployment environment key, then use the saved app setting."""
+    return os.environ.get("GEMINI_API_KEY", "").strip() or get_setting("gemini_api_key")
+
+
+def get_youtube_api_key() -> str:
+    """Prefer the deployment environment key, then use the saved app setting."""
+    return os.environ.get("YOUTUBE_API_KEY", "").strip() or get_setting("youtube_api_key")
 
 
 def get_channel_profile() -> dict[str, Any]:
@@ -564,6 +576,22 @@ def list_messages() -> list[dict[str, Any]]:
     with get_conn() as conn:
         rows = conn.execute("SELECT * FROM messages ORDER BY id DESC LIMIT 100").fetchall()
         return [dict(r) for r in rows]
+
+
+def get_admin_counts() -> dict[str, int]:
+    """Return exact gallery and inbox totals for the admin overview."""
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM looks) AS look_count,
+                (SELECT COUNT(*) FROM messages) AS message_count
+            """
+        ).fetchone()
+        return {
+            "look_count": int(row["look_count"]),
+            "message_count": int(row["message_count"]),
+        }
 
 
 def delete_message(message_id: int) -> None:

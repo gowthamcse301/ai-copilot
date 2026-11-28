@@ -15,3 +15,5 @@ services:
         value: admin
       - key: ADMIN_PASSWORD
         generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false

@@ -4,6 +4,9 @@ import time
 import httpx
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:

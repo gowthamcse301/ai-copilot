@@ -1,0 +1,74 @@
+{% extends "admin_base.html" %}
+
+{% block admin_content %}
+  <div class="admin-page-column">
+    <section class="panel-card admin-panel admin-page-panel">
+      <div class="section-kicker">CHARACTER GALLERY</div>
+      <h2>Add a new look</h2>
+      <form class="form-grid" action="/admin/looks" method="post" enctype="multipart/form-data">
+        <div class="field">
+          <label for="lTitle">Look Title</label>
+          <input id="lTitle" name="title" required placeholder="e.g. Royal Prince" />
+        </div>
+        <div class="field">
+          <label for="lSub">Short Subtitle</label>
+          <input id="lSub" name="subtitle" required placeholder="Golden crown &amp; velvet cape" />
+        </div>
+        <div class="field">
+          <label for="lCat">Category</label>
+          <select id="lCat" name="category">
+            <option value="adventure">Adventure</option>
+            <option value="cozy">Cozy &amp; Sweet</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="lBadge">Badge Label</label>
+          <input id="lBadge" name="badge" required placeholder="e.g. Fantasy" />
+        </div>
+        <div class="field full">
+          <label for="lDesc">Description</label>
+          <textarea id="lDesc" name="description" rows="2" required placeholder="Describe outfit colors and scene..."></textarea>
+        </div>
+        <div class="field full">
+          <label for="lFile">Image File (JPG / PNG / WEBP)</label>
+          <input id="lFile" name="image_file" type="file" accept=".jpg,.jpeg,.png,.webp" required />
+        </div>
+        <div class="field full">
+          <button class="btn btn-primary" type="submit">Upload Look to Gallery</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel-card admin-panel admin-page-panel">
+      <div class="admin-list-heading">
+        <div>
+          <div class="section-kicker">GALLERY</div>
+          <h2>Active looks</h2>
+        </div>
+        <span class="admin-count-badge">{{ looks|length }}</span>
+      </div>
+      {% if looks %}
+        <div class="admin-look-list">
+          {% for l in looks %}
+            <article class="admin-look-item">
+              <img src="/{{ l.image_path }}" alt="{{ l.title }}" />
+              <div class="admin-list-copy">
+                <strong>{{ l.title }}</strong>
+                <small>{{ l.badge }} · {{ l.category }}</small>
+              </div>
+              {% if not l.is_default %}
+                <form action="/admin/looks/{{ l.id }}/delete" method="post">
+                  <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                </form>
+              {% else %}
+                <span class="mini-tag">Core look</span>
+              {% endif %}
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="admin-empty-state">No looks have been added yet.</p>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

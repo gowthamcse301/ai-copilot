@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title }} — {{ channel.channel_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;family=Nunito:wght@500;600;700;800&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body class="{{ 'admin-page assistant-page' if active_admin_page == 'assistant' else 'admin-page' }}">
+  <div class="admin-app-shell">
+    {% include "_admin_sidebar.html" %}
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div>
+          <div class="admin-breadcrumb">CREATOR STUDIO <span>/</span> {{ page_title|upper }}</div>
+          <h1>{{ page_title }}</h1>
+          <p>{{ page_description }}</p>
+        </div>
+        {% if active_admin_page == 'assistant' %}
+          {% include "_assistant_options.html" %}
+        {% else %}
+          <a class="btn btn-secondary admin-live-link" href="/">View live website <span aria-hidden="true">↗</span></a>
+        {% endif %}
+      </header>
+
+      <main class="admin-content{% if active_admin_page == 'assistant' %} assistant-shell{% endif %}">
+        {% if saved == 'channel' %}
+          <div class="alert alert-ok">Channel details and follower stats updated.</div>
+        {% elif saved == 'look' %}
+          <div class="alert alert-ok">New character look added to the gallery.</div>
+        {% elif saved == 'look_deleted' %}
+          <div class="alert alert-ok">Custom look removed.</div>
+        {% elif saved == 'credentials' %}
+          <div class="alert alert-ok">Master credentials updated.</div>
+        {% elif saved == 'apikey' %}
+          <div class="alert alert-ok">Gemini API key saved.</div>
+        {% elif saved == 'youtube_apikey' %}
+          <div class="alert alert-ok">YouTube API key saved.</div>
+        {% elif saved == 'ai_cleared' %}
+          <div class="alert alert-ok">AI conversation history cleared.</div>
+        {% elif saved == 'message_deleted' %}
+          <div class="alert alert-ok">Message removed from inbox.</div>
+        {% endif %}
+
+        {% if error == 'invalid_image' %}
+          <div class="alert alert-err">Upload failed: Choose a JPG, PNG, or WEBP image.</div>
+        {% elif error == 'image_too_large' %}
+          <div class="alert alert-err">Upload failed: Image must be under 8 MB.</div>
+        {% elif error == 'wrong_password' %}
+          <div class="alert alert-err">Current password did not match.</div>
+        {% elif error == 'cred_invalid' %}
+          <div class="alert alert-err">Invalid username or password (username 3–32 characters; password at least 6).</div>
+        {% endif %}
+
+        {% block admin_content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>

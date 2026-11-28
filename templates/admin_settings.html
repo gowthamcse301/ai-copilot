@@ -1,0 +1,58 @@
+{% extends "admin_base.html" %}
+
+{% block admin_content %}
+  <div class="admin-page-column">
+    <section class="panel-card admin-panel admin-page-panel" id="master-security">
+      <div class="section-kicker">ACCOUNT SECURITY</div>
+      <h2>Master credentials</h2>
+      <p class="admin-panel-description">Signed in as <strong>{{ user.username }}</strong></p>
+      <form class="admin-stacked-form" action="/admin/credentials" method="post">
+        <div class="field">
+          <label for="curPw">Current Master Password</label>
+          <input id="curPw" name="current_password" type="password" required autocomplete="current-password" />
+        </div>
+        <div class="field">
+          <label for="newUser">Master Username</label>
+          <input id="newUser" name="new_username" value="{{ user.username }}" minlength="3" maxlength="32" required autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="newPw">New Password (leave blank to keep current)</label>
+          <input id="newPw" name="new_password" type="password" minlength="6" placeholder="Optional new password (min 6 chars)" autocomplete="new-password" />
+        </div>
+        <button class="btn btn-primary" type="submit">Save Credentials</button>
+      </form>
+    </section>
+
+    <section class="panel-card admin-panel admin-page-panel" id="api-settings">
+      <div class="section-kicker">AI ENGINE</div>
+      <h2>Gemini API key</h2>
+      <p class="admin-panel-description">
+        Status: <strong>{{ 'Configured (' + masked_api_key + ')' if has_api_key else 'Not configured' }}</strong>.
+        Image and video generation require a key with access to the selected models; usage limits or billing may apply.
+      </p>
+      <form class="admin-stacked-form" action="/admin/apikey" method="post">
+        <div class="field">
+          <label for="apiKeyInp">Update Gemini API Key</label>
+          <input id="apiKeyInp" name="gemini_api_key" type="password" placeholder="Paste Gemini API key" required autocomplete="new-password" />
+        </div>
+        <button class="btn btn-secondary" type="submit">Save API Key</button>
+      </form>
+    </section>
+
+    <section class="panel-card admin-panel admin-page-panel" id="youtube-settings">
+      <div class="section-kicker">VIDEO PLAYBACK</div>
+      <h2>YouTube Data API key</h2>
+      <p class="admin-panel-description">
+        Status: <strong>{{ 'Configured (' + masked_youtube_api_key + ')' if has_youtube_api_key else 'Not configured' }}</strong>.
+        Requires YouTube Data API v3 enabled for the key. Used to find embeddable videos for playback inside the AI chat.
+      </p>
+      <form class="admin-stacked-form" action="/admin/youtube-apikey" method="post">
+        <div class="field">
+          <label for="youtubeApiKeyInp">Update YouTube Data API Key</label>
+          <input id="youtubeApiKeyInp" name="youtube_api_key" type="password" placeholder="Paste YouTube Data API key" required autocomplete="new-password" />
+        </div>
+        <button class="btn btn-secondary" type="submit">Save YouTube API Key</button>
+      </form>
+    </section>
+  </div>
+{% endblock %}

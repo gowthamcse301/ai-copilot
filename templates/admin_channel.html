@@ -1,0 +1,69 @@
+{% extends "admin_base.html" %}
+
+{% block admin_content %}
+  <section class="panel-card admin-panel admin-page-panel">
+    <div class="section-kicker">CHANNEL PROFILE</div>
+    <h2>Channel details and social stats</h2>
+    <form class="form-grid" action="/admin/channel" method="post">
+      <div class="field">
+        <label for="cName">Channel Name</label>
+        <input id="cName" name="channel_name" value="{{ channel.channel_name }}" required />
+      </div>
+      <div class="field">
+        <label for="cLoc">Location</label>
+        <input id="cLoc" name="location" value="{{ channel.location }}" required />
+      </div>
+      <div class="field full">
+        <label for="cTag">Tagline</label>
+        <input id="cTag" name="tagline" value="{{ channel.tagline }}" required />
+      </div>
+      <div class="field full">
+        <label for="cBio">Channel Description / Bio</label>
+        <textarea id="cBio" name="bio" rows="3" required>{{ channel.bio }}</textarea>
+      </div>
+      <div class="field">
+        <label for="ytHandle">YouTube Handle</label>
+        <input id="ytHandle" name="youtube_handle" value="{{ channel.youtube_handle }}" required />
+      </div>
+      <div class="field">
+        <label for="ytUrl">YouTube URL</label>
+        <input id="ytUrl" name="youtube_url" type="url" value="{{ channel.youtube_url }}" required />
+      </div>
+      <div class="field">
+        <label for="ytSubs">YouTube Subscribers</label>
+        <input id="ytSubs" name="youtube_subs" value="{{ channel.youtube_subs }}" placeholder="e.g. 145+" />
+      </div>
+      <div class="field">
+        <label for="ytVids">YouTube Video Count</label>
+        <input id="ytVids" name="youtube_videos" value="{{ channel.youtube_videos }}" placeholder="e.g. 192+" />
+      </div>
+      <div class="field">
+        <label for="igHandle">Instagram Handle</label>
+        <input id="igHandle" name="instagram_handle" value="{{ channel.instagram_handle }}" placeholder="@happy_toonzz" />
+      </div>
+      <div class="field">
+        <label for="igUrl">Instagram URL</label>
+        <input id="igUrl" name="instagram_url" value="{{ channel.instagram_url }}" placeholder="https://www.instagram.com/happy_toonzz/" />
+      </div>
+      <div class="field full">
+        <label for="igFoll">Instagram Followers</label>
+        <input id="igFoll" name="instagram_followers" value="{{ channel.instagram_followers }}" placeholder="Enter your exact Instagram follower count" />
+      </div>
+      <div class="field">
+        <label for="fbHandle">Facebook Page Name</label>
+        <input id="fbHandle" name="facebook_handle" value="{{ channel.facebook_handle }}" placeholder="Happy Toonzz" />
+      </div>
+      <div class="field">
+        <label for="fbUrl">Facebook URL</label>
+        <input id="fbUrl" name="facebook_url" value="{{ channel.facebook_url }}" placeholder="https://www.facebook.com/..." />
+      </div>
+      <div class="field full">
+        <label for="fbFoll">Facebook Followers</label>
+        <input id="fbFoll" name="facebook_followers" value="{{ channel.facebook_followers }}" placeholder="Enter Facebook follower count" />
+      </div>
+      <div class="field full">
+        <button class="btn btn-primary" type="submit">Save Channel Updates</button>
+      </div>
+    </form>
+  </section>
+{% endblock %}
