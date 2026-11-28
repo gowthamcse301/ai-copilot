@@ -7,6 +7,8 @@
       <h2>Draft homepage content and styles</h2>
       <p class="homepage-content-help">
         The AI can draft HTML and CSS separately. HTML scripts, inline styles, forms, and embedded players are removed.
+        For carousels, use <code>data-homepage-carousel</code>, <code>data-carousel-track</code>, and <code>data-carousel-slide</code>.
+        Trusted dot indicators and automatic rotation are preloaded; AI scripts and inline handlers remain blocked.
         CSS applies across the public website after publishing. Saving creates a preview; it does not publish live.
       </p>
       <div id="homepageDraftSyncNotice" class="homepage-draft-sync-notice" role="status" hidden>
@@ -59,7 +61,7 @@
           <iframe
             class="homepage-content-preview-frame"
             title="Draft homepage content and CSS preview"
-            sandbox
+            sandbox="allow-scripts"
             srcdoc="{{ draft_preview_document }}"
           ></iframe>
           <form
@@ -82,7 +84,7 @@
           <iframe
             class="homepage-content-preview-frame"
             title="Published homepage content and CSS preview"
-            sandbox
+            sandbox="allow-scripts"
             srcdoc="{{ published_preview_document }}"
           ></iframe>
         {% else %}

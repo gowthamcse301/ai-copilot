@@ -258,10 +258,11 @@ def _homepage_content_preview_document(content_html: str, content_css: str) -> s
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         '<base href="/">'
         '<link rel="stylesheet" href="/static/styles.css">'
-        f"<style>{content_css}</style></head><body>"
+        f"<style>{content_css}</style>"
+        '<link rel="stylesheet" href="/static/homepage_carousel.css?v=2"></head><body>'
         '<main class="container homepage-content-section">'
         f'<div class="homepage-content-card happy-toonzz-content">{content_html}</div>'
-        "</main></body></html>"
+        '</main><script src="/static/homepage_carousel.js?v=2" defer></script></body></html>'
     )
 
 

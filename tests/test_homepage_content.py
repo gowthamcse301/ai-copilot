@@ -61,6 +61,23 @@ class HomepageContentTests(unittest.TestCase):
         self.assertNotIn("iframe", sanitized)
         self.assertIn('<h3 class="happy-toonzz-title">News</h3>', sanitized)
 
+    def test_sanitizer_preserves_carousel_markers_and_removes_handlers(self):
+        sanitized = sanitize_homepage_html(
+            '<section data-homepage-carousel aria-label="Character looks" onclick="bad()">'
+            '<div data-carousel-track>'
+            '<article data-carousel-slide>First</article>'
+            '<article data-carousel-slide onmouseover="bad()">Second</article>'
+            "</div></section><script>bad()</script>"
+        )
+
+        self.assertIn("data-homepage-carousel", sanitized)
+        self.assertIn("data-carousel-track", sanitized)
+        self.assertEqual(sanitized.count("data-carousel-slide"), 2)
+        self.assertIn('aria-label="Character looks"', sanitized)
+        self.assertNotIn("onclick", sanitized)
+        self.assertNotIn("onmouseover", sanitized)
+        self.assertNotIn("<script", sanitized)
+
     def test_sanitizer_repairs_escaped_class_attribute_quotes(self):
         sanitized = sanitize_homepage_html(
             r'<div class=\&quot;happy-toonzz-section\&quot;>Update</div>'
@@ -95,6 +112,17 @@ class HomepageContentTests(unittest.TestCase):
         for css in unsafe_stylesheets:
             with self.subTest(css=css), self.assertRaises(ValueError):
                 sanitize_homepage_css(css)
+
+    def test_css_sanitizer_allows_scroll_snap_carousel_styles(self):
+        sanitized = sanitize_homepage_css(
+            ".happy-toonzz-slider { display: flex; overflow-x: auto; "
+            "scroll-snap-type: x mandatory; } "
+            ".happy-toonzz-slide { flex: 0 0 100%; scroll-snap-align: start; }"
+        )
+
+        self.assertIn("overflow-x: auto", sanitized)
+        self.assertIn("scroll-snap-type: x mandatory", sanitized)
+        self.assertIn("scroll-snap-align: start", sanitized)
 
     def test_ai_tool_saves_sanitized_draft_without_publishing(self):
         result, media = ai_assistant._execute_tool(
@@ -529,6 +557,16 @@ class HomepageContentTests(unittest.TestCase):
 
         self.assertNotIn(b"assistantWidgetLauncher", public_response.body)
         self.assertIn(b"assistantWidgetLauncher", admin_response.body)
+        self.assertIn(b"homepage_carousel.js", public_response.body)
+
+    def test_homepage_preview_loads_preloaded_carousel_script(self):
+        preview = app_module._homepage_content_preview_document(
+            '<div data-homepage-carousel><div data-carousel-track></div></div>',
+            "",
+        )
+
+        self.assertIn('href="/static/homepage_carousel.css?v=2"', preview)
+        self.assertIn('src="/static/homepage_carousel.js?v=2" defer', preview)
 
 
 if __name__ == "__main__":

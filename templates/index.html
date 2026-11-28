@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/styles.css" />
   <link rel="stylesheet" href="/homepage-custom.css" />
+  <link rel="stylesheet" href="/static/homepage_carousel.css?v=2" />
 </head>
 <body>
 
@@ -25,7 +26,11 @@
       </div>
     </a>
 
-    <div class="nav-links">
+    <button class="btn btn-secondary mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-controls="primaryNavLinks" aria-expanded="false">
+      <span aria-hidden="true">&#9776;</span> Menu
+    </button>
+
+    <div class="nav-links" id="primaryNavLinks">
       <a href="#channel">Channel Stats</a>
       <a href="#looks">Looks ({{ looks|length }})</a>
       <a href="#song">Theme Song</a>
@@ -681,6 +686,21 @@
     let viewingRef = false;
     let compareOn = false;
 
+    const navbar = document.querySelector('.navbar');
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const primaryNavLinks = document.getElementById('primaryNavLinks');
+    mobileMenuToggle.addEventListener('click', () => {
+      const isOpen = mobileMenuToggle.getAttribute('aria-expanded') === 'true';
+      mobileMenuToggle.setAttribute('aria-expanded', String(!isOpen));
+      navbar.classList.toggle('menu-open', !isOpen);
+    });
+    primaryNavLinks.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => {
+        mobileMenuToggle.setAttribute('aria-expanded', 'false');
+        navbar.classList.remove('menu-open');
+      });
+    });
+
     function renderModal() {
       const item = viewingRef ? REFERENCE_ITEM : LOOKS[modalIdx];
       modalTitle.textContent = item.title;
@@ -740,5 +760,6 @@
       toastTimer = setTimeout(() => toast.classList.remove('show'), 2300);
     }
   </script>
+  <script src="/static/homepage_carousel.js?v=2" defer></script>
 </body>
 </html>

@@ -147,6 +147,8 @@ button, a, input, textarea, select { font-family: inherit; }
   white-space: nowrap;
 }
 
+.navbar .mobile-menu-toggle { display: none; }
+
 .user-chip {
   display: inline-flex;
   align-items: center;
@@ -422,7 +424,7 @@ section { padding: 34px 0; }
 .youtube-playlist-heading { text-align: center; }
 .instagram-profile-heading h3,
 .youtube-playlist-heading h3 { margin-top: 4px; font-family: var(--font-display); }
-.instagram-profile-embed { width: min(100%, 540px); }
+.instagram-profile-embed { position: relative; width: min(100%, 540px); }
 .instagram-profile-embed .instagram-media {
   width: 100% !important;
   min-width: 0 !important;
@@ -866,22 +868,75 @@ footer { padding: 28px 0 44px; text-align: center; color: var(--ink-muted); font
   .looks-grid, .pillars-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .palette-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sheet-panel, .song-panel, .social-grid, .admin-layout { grid-template-columns: 1fr; }
+  .navbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 24px;
+  }
+  .brand { min-width: 0; }
+  .brand-text { min-width: 0; }
+  .brand-text strong, .brand-text span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .navbar .mobile-menu-toggle {
+    display: inline-flex;
+    grid-column: 2;
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+  .nav-links {
+    display: none;
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .navbar.menu-open .nav-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .nav-links a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 8px 6px;
+    text-align: center;
+    white-space: normal;
+  }
+  .nav-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 @media (max-width: 860px) {
-  .hero-grid, .form-grid { grid-template-columns: 1fr; }
-  .social-embeds-grid { grid-template-columns: 1fr; }
-  .navbar { flex-wrap: wrap; }
-  .nav-links { display: none; }
-  .nav-actions { margin-left: auto; }
+  .hero-grid, .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .hero-grid > *, .social-embeds-grid > * { min-width: 0; }
+  .hero .pill-tag { max-width: 100%; }
+  .social-embeds-grid { grid-template-columns: minmax(0, 1fr); }
+  .instagram-profile-embed {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
   .modal-content.compare-mode { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
   .looks-grid, .pillars-grid { grid-template-columns: 1fr; }
   .palette-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .nav-actions { flex-wrap: wrap; justify-content: flex-end; }
-  .hero-stats { grid-template-columns: repeat(3, 1fr); }
+  .nav-actions { flex-wrap: wrap; justify-content: flex-start; }
+  .hero-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spotlight-thumbs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .thumb-btn { min-width: 0; }
+  .navbar { position: relative; top: auto; }
+  .brand-text strong { font-size: 1rem; }
+  .brand-text span { font-size: 0.66rem; }
 }
 
 /* AI Studio Assistant Dashboard */

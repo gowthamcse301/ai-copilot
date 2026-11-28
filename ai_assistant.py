@@ -1127,7 +1127,14 @@ def _generate_homepage_draft(
                 "them. Put markup in html and styles in css; add descriptive class names prefixed with "
                 "happy-toonzz- to the HTML and write matching CSS rules when useful. CSS may style the "
                 "public website, but must not load external resources. Use only basic content HTML. For "
-                "image requests, use only a supplied available_images src; never invent an image URL. "
+                "slider or carousel requests, mark the root with data-homepage-carousel, the track with "
+                "data-carousel-track, and each slide with data-carousel-slide. Use div, article, or "
+                "figure elements for these markers; a trusted preloaded script auto-advances slides and "
+                "adds accessible dot indicators, keyboard controls, and swipe support. Do not add "
+                "numbered indicators or previous/next buttons. Do not change the track's overflow or "
+                "scroll behavior. Do not write JavaScript, event handlers, or "
+                "form controls for carousel behavior. "
+                "For image requests, use only a supplied available_images src; never invent an image URL. "
                 "Make exactly one draft_homepage_content function call and do not answer in prose."
             ),
             tools=[types.Tool(function_declarations=[function])],
