@@ -1,0 +1,81 @@
+<div
+  class="global-assistant-widget assistant-page"
+  data-assistant-page-context="{{ assistant_page_context|default(active_admin_page|default('assistant')) }}"
+>
+  <button
+    class="global-assistant-launcher"
+    id="assistantWidgetLauncher"
+    type="button"
+    aria-haspopup="dialog"
+    aria-controls="assistantWidgetPanel"
+    aria-expanded="false"
+    {% if active_admin_page == 'assistant' %}hidden{% endif %}
+  >
+    <span aria-hidden="true">&#127908;</span>
+    <span>Talk to AI</span>
+    <span class="global-assistant-task-indicator" id="assistantTaskIndicator" hidden>Working</span>
+  </button>
+
+  <section
+    class="global-assistant-panel"
+    id="assistantWidgetPanel"
+    role="dialog"
+    aria-label="Happy Toonzz AI Assistant"
+    hidden
+  >
+    <header class="global-assistant-panel-header">
+      <div>
+        <strong>Happy Toonzz AI</strong>
+        <small>Available while you browse</small>
+      </div>
+      <div class="global-assistant-panel-actions">
+        {% if active_admin_page != 'assistant' %}
+          {% include "_assistant_options.html" %}
+        {% endif %}
+        <button class="global-assistant-close" id="assistantWidgetClose" type="button" aria-label="Close AI Assistant">
+          &times;
+        </button>
+      </div>
+    </header>
+    <div class="global-assistant-panel-content assistant-shell">
+      {% if active_admin_page != 'assistant' %}
+        {% include "_assistant_panel.html" %}
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+<script>
+  (() => {
+    const widget = document.querySelector(".global-assistant-widget");
+    const panel = document.querySelector("#assistantWidgetPanel");
+    const launcher = document.querySelector("#assistantWidgetLauncher");
+    const closeButton = document.querySelector("#assistantWidgetClose");
+    if (!widget || !panel || !launcher || !closeButton) return;
+
+    async function setOpen(open) {
+      panel.hidden = !open;
+      launcher.setAttribute("aria-expanded", String(open));
+      widget.classList.toggle("is-open", open);
+      if (open) {
+        try {
+          await refreshSavedAiHistory();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Could not load assistant history.";
+          document.querySelector("#voiceStatus").textContent = message;
+        }
+        if (panel.hidden) return;
+      } else {
+        stopRecognition();
+        stopSpeech();
+      }
+    }
+
+    launcher.addEventListener("click", () => setOpen(panel.hidden));
+    closeButton.addEventListener("click", () => setOpen(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !panel.hidden) setOpen(false);
+    });
+    window.addEventListener("pageshow", () => setOpen(false));
+  })();
+</script>

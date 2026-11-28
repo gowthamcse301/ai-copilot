@@ -1,4 +1,9 @@
-    <section class="panel-card ai-studio-card assistant-console" id="ai-copilot" aria-label="AI engine console">
+    <section
+      class="panel-card ai-studio-card assistant-console"
+      id="ai-copilot"
+      aria-label="AI engine console"
+      data-assistant-page-context="{{ assistant_page_context|default(active_admin_page|default('assistant')) }}"
+    >
       <div class="assistant-engine-layout">
         <div class="assistant-engine-main">
 
@@ -87,7 +92,7 @@
               aria-label="Enter a command for the AI engine"
               placeholder="Enter a command for the AI engine..."
             />
-            <button class="btn btn-primary" id="aiSendBtn" type="submit">Run Command</button>
+            <button class="btn btn-primary" id="aiSendBtn" type="submit" aria-label="Run command" title="Run command">Run Command</button>
           </div>
           <div class="assistant-composer-tools">
             <button class="btn btn-secondary mic-btn" id="micBtn" type="button" onclick="toggleMic()">
@@ -141,6 +146,14 @@
     let youtubeApiLoading = false;
     let resumeVoiceAfterYoutube = false;
 
+    const savedSpeechLanguage = localStorage.getItem('assistantSpeechLanguage');
+    if (['en-IN', 'ta-IN', 'en-US'].includes(savedSpeechLanguage)) {
+      speechLang.value = savedSpeechLanguage;
+    }
+    speechLang.addEventListener('change', () => {
+      localStorage.setItem('assistantSpeechLanguage', speechLang.value);
+    });
+
     const savedVoiceGender = localStorage.getItem('assistantVoiceGender');
     if (savedVoiceGender === 'male' || savedVoiceGender === 'female') {
       speechVoiceGender.value = savedVoiceGender;
@@ -155,6 +168,16 @@
     speechVoiceStyle.addEventListener('change', () => {
       localStorage.setItem('assistantVoiceStyle', speechVoiceStyle.value);
     });
+
+    function restoreCheckboxSetting(toggle, key) {
+      toggle.checked = localStorage.getItem(key) === 'true';
+      toggle.addEventListener('change', () => {
+        localStorage.setItem(key, String(toggle.checked));
+      });
+    }
+    restoreCheckboxSetting(autoSpeakToggle, 'assistantAutoSpeak');
+    restoreCheckboxSetting(wakeWordToggle, 'assistantWakeWord');
+    restoreCheckboxSetting(passiveLoopToggle, 'assistantPassiveLoop');
 
     feed.scrollTop = feed.scrollHeight;
 
@@ -652,6 +675,119 @@
     }
 
     let isBusy = false;
+    function setAssistantBusy(busy) {
+      isBusy = busy;
+      aiSendBtn.disabled = busy;
+      attachImageBtn.disabled = busy;
+      removeImageBtn.disabled = busy;
+      aiImageInput.disabled = busy;
+      const taskIndicator = document.getElementById('assistantTaskIndicator');
+      if (taskIndicator) taskIndicator.hidden = !busy;
+    }
+
+    function ensureUserBubble(prompt) {
+      const alreadyShown = Array.from(feed.querySelectorAll('.ai-bubble.user .ai-bubble-text'))
+        .some((node) => node.textContent === prompt);
+      if (!alreadyShown) appendBubble('user', prompt);
+    }
+
+    async function refreshSavedAiHistory() {
+      const response = await fetch('/admin/ai/history', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not load the latest assistant history.');
+      feed.replaceChildren();
+      if (!data.messages.length) {
+        appendBubble('assistant', 'Command interface ready. Speak or enter a task to begin a creative session.');
+        return;
+      }
+      for (const item of data.messages) {
+        const media = item.meta && Array.isArray(item.meta.media) ? item.meta.media : [];
+        appendBubble(item.role, item.text, media);
+      }
+      feed.scrollTop = feed.scrollHeight;
+    }
+
+    async function waitForAiTask(taskId, prompt, fromVoice, thinkingBubble) {
+      ensureUserBubble(prompt);
+      if (!thinkingBubble || !thinkingBubble.isConnected) {
+        thinkingBubble = appendBubble('assistant', 'Working in the background — you can switch pages safely.');
+      }
+      const thinkingText = thinkingBubble.querySelector('.ai-bubble-text');
+      if (thinkingText) thinkingText.textContent = 'Working in the background — you can switch pages safely.';
+      voiceStatus.textContent = 'AI is working in the background. You can switch pages safely.';
+
+      while (true) {
+        const response = await fetch('/admin/ai/tasks/' + encodeURIComponent(taskId), { cache: 'no-store' });
+        const task = await response.json();
+        if (!response.ok) throw new Error(task.error || 'Could not check the assistant task.');
+        if (task.status === 'queued' || task.status === 'running') {
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+          continue;
+        }
+
+        if (task.status === 'completed') {
+          const result = task.result || {};
+          const reply = typeof result.reply === 'string' ? result.reply.trim() : '';
+          if (result.ok === false || !reply) {
+            await refreshSavedAiHistory();
+            const failure = result.error
+              || reply
+              || 'The assistant returned no response, so the task result could not be confirmed.';
+            voiceStatus.textContent = failure;
+            if (autoSpeakToggle.checked || (assistantInputMode === 'voice' && fromVoice)) {
+              speakText(failure);
+            }
+            return;
+          }
+          await refreshSavedAiHistory();
+          const mutatingTools = ['update_channel_stats', 'draft_homepage_content'];
+          const changedData = Array.isArray(result.tools)
+            && result.tools.some((tool) => mutatingTools.includes(tool));
+          const refreshResult = changedData
+            && typeof window.refreshAdminPageAfterDataChange === 'function'
+            ? window.refreshAdminPageAfterDataChange()
+            : '';
+          const channelSynced = result.channel && !refreshResult
+            ? syncChannelForm(result.channel)
+            : false;
+          const refreshStatus = refreshResult === 'deferred'
+            ? 'AI updated saved data. Save or discard your edits to refresh this page.'
+            : refreshResult === 'refreshing'
+              ? 'Assistant response received. Refreshing this page with the latest data.'
+              : channelSynced
+                ? 'Channel profile updated.'
+                : 'Assistant response received.';
+          const maybeLoop = () => {
+            if (assistantInputMode !== 'voice') return;
+            if (passiveLoopToggle.checked) {
+              setTimeout(() => startListening(), 350);
+            } else if (wakeWordToggle.checked) {
+              setTimeout(() => startListening(false, true), 350);
+            }
+          };
+
+          if (autoSpeakToggle.checked || (assistantInputMode === 'voice' && fromVoice)) {
+            speakText(reply, maybeLoop);
+            voiceStatus.textContent = refreshStatus === 'Channel profile updated.'
+              ? 'Channel profile updated and response is speaking.'
+              : refreshStatus;
+          } else {
+            voiceStatus.textContent = refreshStatus;
+            maybeLoop();
+          }
+          return;
+        }
+
+        await refreshSavedAiHistory();
+        const failure = task.error || 'The assistant task could not be completed.';
+        voiceStatus.textContent = failure;
+        if (autoSpeakToggle.checked || (assistantInputMode === 'voice' && fromVoice)) {
+          speakText(failure);
+        }
+        return;
+      }
+    }
+
     async function sendAiPrompt(e, fromVoice = false) {
       if (e) e.preventDefault();
       if (isBusy) return false;
@@ -664,11 +800,7 @@
       }
 
       stopSpeech();
-      isBusy = true;
-      aiSendBtn.disabled = true;
-      attachImageBtn.disabled = true;
-      removeImageBtn.disabled = true;
-      aiImageInput.disabled = true;
+      setAssistantBusy(true);
       aiInput.value = '';
       const previewUrl = selectedImage ? URL.createObjectURL(selectedImage) : '';
       appendBubble(
@@ -676,57 +808,58 @@
         prompt,
         selectedImage ? [{ media_type: 'image', media_url: previewUrl, attached: true }] : [],
       );
-      const thinkingBubble = appendBubble('assistant', 'Executing command... (tools may run)');
-      voiceStatus.textContent = 'Engine processing command...';
+      const thinkingBubble = appendBubble('assistant', 'Starting your task…');
+      voiceStatus.textContent = 'Starting AI task…';
 
       try {
         const body = new FormData();
         body.append('prompt', prompt);
+        body.append('page_context', document.getElementById('ai-copilot').dataset.assistantPageContext || 'assistant');
         if (selectedImage) body.append('image_file', selectedImage);
-        const res = await fetch('/admin/ai/chat', { method: 'POST', body });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || data.detail || 'The request could not be completed.');
-        thinkingBubble.remove();
+        const response = await fetch('/admin/ai/chat', { method: 'POST', body });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || data.detail || 'The request could not be started.');
         aiImageInput.value = '';
         updateSelectedImageStatus();
-
-        const reply = data.reply || 'All done!';
-        appendBubble('assistant', reply, data.media || []);
-
-        const channelSynced = data.channel ? syncChannelForm(data.channel) : false;
-
-        const maybeLoop = () => {
-          if (assistantInputMode !== 'voice') return;
-          if (passiveLoopToggle.checked) {
-            setTimeout(() => startListening(), 350);
-          } else if (wakeWordToggle.checked) {
-            setTimeout(() => startListening(false, true), 350);
-          }
-        };
-
-        if (autoSpeakToggle.checked || (assistantInputMode === 'voice' && fromVoice)) {
-          speakText(reply, maybeLoop);
-          if (channelSynced) {
-            voiceStatus.textContent = 'Channel stats synced live & speaking positive response...';
-          }
-        } else {
-          voiceStatus.textContent = channelSynced ? 'Done — channel stats synced live!' : 'Done!';
-          maybeLoop();
-        }
-      } catch (err) {
+        await waitForAiTask(data.task_id, prompt, fromVoice, thinkingBubble);
+      } catch (error) {
         thinkingBubble.remove();
         if (!aiInput.value) aiInput.value = prompt;
-        const message = err instanceof Error ? err.message : 'Please try once more.';
-        appendBubble('assistant', 'Sorry, I could not complete that request. ' + message);
+        const message = error instanceof Error ? error.message : 'Please try once more.';
+        const failure = 'Sorry, I could not complete that request. ' + message;
+        appendBubble('assistant', failure);
         voiceStatus.textContent = 'Request failed — you can retry or edit your message.';
+        if (autoSpeakToggle.checked || (assistantInputMode === 'voice' && fromVoice)) {
+          speakText(failure);
+        }
       } finally {
-        isBusy = false;
-        aiSendBtn.disabled = false;
-        attachImageBtn.disabled = false;
-        removeImageBtn.disabled = false;
-        aiImageInput.disabled = false;
+        setAssistantBusy(false);
       }
       return false;
+    }
+
+    async function resumeActiveAiTask() {
+      try {
+        const response = await fetch('/admin/ai/tasks/active', { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not check for active assistant tasks.');
+        if (!data.task) return;
+
+        setAssistantBusy(true);
+        ensureUserBubble(data.task.prompt);
+        const thinkingBubble = appendBubble(
+          'assistant',
+          'Working in the background — you can switch pages safely.',
+        );
+        try {
+          await waitForAiTask(data.task.task_id, data.task.prompt, false, thinkingBubble);
+        } finally {
+          setAssistantBusy(false);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Could not resume the assistant task.';
+        voiceStatus.textContent = message;
+      }
     }
 
     // Browser Web Speech Recognition (Voice Input)
@@ -939,6 +1072,11 @@
     typeModeBtn.addEventListener('click', () => setAssistantInputMode('type'));
     voiceModeBtn.addEventListener('click', () => setAssistantInputMode('voice', true));
 
+    window.addEventListener('pagehide', () => {
+      stopRecognition();
+      stopSpeech();
+    });
     registerYouTubePlayers(feed);
+    resumeActiveAiTask();
     if (assistantInputMode === 'voice' && wakeWordToggle.checked) startListening(false, true);
   </script>

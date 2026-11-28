@@ -25,6 +25,7 @@ from google.genai import types
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
 import db
+from content_safety import sanitize_homepage_css, sanitize_homepage_html
 
 BASE_DIR = Path(__file__).resolve().parent
 AI_MEDIA_DIR = BASE_DIR / "static" / "ai_media"
@@ -68,6 +69,7 @@ Tool Usage Rules:
 - When asked to update subscriber/follower numbers, social links, bio, or tagline -> call update_channel_stats.
 - When asked about current website stats, looks, or fan messages -> call get_channel_overview.
 - When asked to add a generated image to the website's Looks gallery -> call publish_image_as_look.
+- When asked to add or change a custom homepage section -> call draft_homepage_content with both the complete HTML and separate CSS. Add descriptive class names to the HTML and matching CSS rules when useful; never put CSS in a style tag. It only saves a sanitized draft; never claim it was published. Ask the admin to review and publish it at /admin/content.
 """
 
 TOOL_DECLARATIONS = [
@@ -159,6 +161,29 @@ TOOL_DECLARATIONS = [
         "name": "get_channel_overview",
         "description": "Read current channel profile stats, character looks, and recent fan messages from the website database.",
         "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "type": "function",
+        "name": "draft_homepage_content",
+        "description": "Create or replace the one custom homepage content section as a sanitized draft for admin review. This tool cannot publish content or edit website templates.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "html": {
+                    "type": "string",
+                    "description": "An HTML fragment using only basic content tags such as headings, paragraphs, lists, links, and images. Do not include scripts, styles, iframes, forms, or event handlers.",
+                },
+                "css": {
+                    "type": "string",
+                    "description": "CSS for the public website, stored separately from HTML. Use matching class names from the HTML. Do not use @import, URLs, or embedded resources.",
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "A short note describing what this draft adds or changes.",
+                },
+            },
+            "required": ["html", "css", "summary"],
+        },
     },
     {
         "type": "function",
@@ -935,6 +960,34 @@ def _execute_tool(name: str, args: dict[str, Any], api_key: str) -> tuple[dict[s
             "recent_messages": db.list_messages()[:5],
         }, media_items
 
+    if name == "draft_homepage_content":
+        raw_html = args.get("html")
+        if not isinstance(raw_html, str):
+            return {"ok": False, "error": "Homepage draft content must be HTML text."}, media_items
+        raw_css = args.get("css")
+        if raw_css is not None and not isinstance(raw_css, str):
+            return {"ok": False, "error": "Homepage CSS must be text."}, media_items
+        summary = args.get("summary", "")
+        if not isinstance(summary, str):
+            summary = ""
+        try:
+            sanitized_html = sanitize_homepage_html(raw_html)
+            sanitized_css = sanitize_homepage_css(raw_css) if raw_css is not None else None
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}, media_items
+        db.save_homepage_content_draft(
+            sanitized_html,
+            source="ai",
+            summary=summary,
+            content_css=sanitized_css,
+        )
+        return {
+            "ok": True,
+            "status": "draft_only",
+            "summary": summary.strip()[:200],
+            "review_path": "/admin/content",
+        }, media_items
+
     if name == "publish_image_as_look":
         res = tool_publish_look(
             image_url=str(args.get("image_url", "")),
@@ -949,11 +1002,195 @@ def _execute_tool(name: str, args: dict[str, Any], api_key: str) -> tuple[dict[s
     return {"ok": False, "error": f"Unknown tool: {name}"}, media_items
 
 
+_HOMEPAGE_EDIT_ACTION_RE = re.compile(
+    r"\b(?:add|adjust|align|brighten|change|color|create|darken|design|draft|edit|enlarge|expand|format|"
+    r"improve|include|insert|make|modify|move|polish|remove|replace|resize|rewrite|shrink|style|update(?:d)?|"
+    r"bigger|larger|smaller)\b"
+    r"|(?:அப்டேட்|மாற்று|மாற்ற|சேர்|சேர்க்க|புதுப்பி|சேஞ்ச்|ரிமூவ்|எடிட்|அட்|ஸ்டைல்|மாடிஃபை|ரீப்ளேஸ்)",
+    re.IGNORECASE,
+)
+_HOMEPAGE_EDIT_TARGET_RE = re.compile(
+    r"\b(?:homepage|home\s+page|website|site|section|content|draft)\b"
+    r"|(?:ஹோம்\s*பேஜ்|வெப்சைட்|செக்ஷன்|கன்டன்ட்|கண்டன்ட்|உள்ளடக்கம்|டிராஃப்ட்)",
+    re.IGNORECASE,
+)
+_HOMEPAGE_EDIT_FOLLOWUP_RE = re.compile(
+    r"\b(?:last|first|next|previous|both|all|same|other|one|two|final)\b"
+    r"|(?:கடைசி|முதல்|அடுத்த|இரண்டு|இரண்டாவது|இறுதி)",
+    re.IGNORECASE,
+)
+_HOMEPAGE_QUESTION_RE = re.compile(
+    r"^\s*(?:how\b|why\b|what\b|where\b|when\b|is it possible\b|can i\b|should i\b|எப்படி|ஏன்|என்ன)",
+    re.IGNORECASE,
+)
+_HOMEPAGE_STATUS_REPORT_RE = re.compile(
+    r"\b(?:not|isn't|wasn't|didn't|hasn't|haven't)\b.{0,40}"
+    r"\b(?:updated?|updating|changed?|saved?|showing)\b"
+    r"|(?:அப்டேட்|மாற்றம்).{0,24}(?:ஆகல|இல்ல|பண்ணல)",
+    re.IGNORECASE,
+)
+
+_AI_PAGE_CONTEXT_LABELS = {
+    "overview": "the admin Overview dashboard",
+    "assistant": "the AI Engine page",
+    "channel": "the Channel profile editor",
+    "looks": "the Character looks gallery",
+    "inbox": "the Fan inbox",
+    "content": "the Homepage content editor",
+    "settings": "Admin Settings",
+    "homepage": "the public homepage viewed by its signed-in administrator",
+}
+
+
+def _is_homepage_content_edit_request(
+    prompt: str,
+    recent_user_context: str = "",
+    previous_user_prompt: str = "",
+) -> bool:
+    if _HOMEPAGE_QUESTION_RE.match(prompt) or _HOMEPAGE_STATUS_REPORT_RE.search(prompt):
+        return False
+    if (
+        _HOMEPAGE_EDIT_ACTION_RE.search(prompt)
+        and _HOMEPAGE_EDIT_TARGET_RE.search(f"{prompt} {recent_user_context}")
+    ):
+        return True
+    return bool(
+        _HOMEPAGE_EDIT_FOLLOWUP_RE.search(prompt)
+        and _HOMEPAGE_EDIT_TARGET_RE.search(prompt)
+        and _HOMEPAGE_EDIT_ACTION_RE.search(previous_user_prompt)
+        and _HOMEPAGE_EDIT_TARGET_RE.search(previous_user_prompt)
+    )
+
+
+def _generate_homepage_draft(
+    client: genai.Client,
+    model: str,
+    prompt: str,
+    api_key: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    content = db.get_homepage_content()
+    available_images = []
+    for look in db.get_looks():
+        image_path = str(look.get("image_path", "")).replace("\\", "/").lstrip("/")
+        if (
+            image_path.startswith(("images/", "static/"))
+            and ".." not in image_path.split("/")
+        ):
+            available_images.append(
+                {
+                    "title": look.get("title", ""),
+                    "src": f"/{image_path}",
+                    "description": look.get("description", ""),
+                }
+            )
+
+    function = types.FunctionDeclaration(
+        name="draft_homepage_content",
+        description="Save a sanitized HTML draft for the one custom homepage section.",
+        parameters={
+            "type": "OBJECT",
+            "properties": {
+                "html": {
+                    "type": "STRING",
+                    "description": "Complete replacement HTML fragment for the custom homepage section.",
+                },
+                "css": {
+                    "type": "STRING",
+                    "description": "Separate CSS for the public website, using matching classes in the HTML.",
+                },
+                "summary": {
+                    "type": "STRING",
+                    "description": "Short description of the changes in this draft.",
+                },
+            },
+            "required": ["html", "css", "summary"],
+        },
+    )
+    request_context = json.dumps(
+        {
+            "user_request": prompt,
+            "current_draft_html": content["draft_html"],
+            "current_draft_css": content["draft_css"],
+            "published_html": content["published_html"],
+            "published_css": content["published_css"],
+            "available_images": available_images,
+        },
+        ensure_ascii=False,
+    )
+    response = client.models.generate_content(
+        model=model,
+        contents=request_context,
+        config=types.GenerateContentConfig(
+            system_instruction=(
+                "Create a replacement draft for the single custom homepage section. Apply the user's "
+                "requested changes and preserve useful existing content and CSS unless asked to replace "
+                "them. Put markup in html and styles in css; add descriptive class names prefixed with "
+                "happy-toonzz- to the HTML and write matching CSS rules when useful. CSS may style the "
+                "public website, but must not load external resources. Use only basic content HTML. For "
+                "image requests, use only a supplied available_images src; never invent an image URL. "
+                "Make exactly one draft_homepage_content function call and do not answer in prose."
+            ),
+            tools=[types.Tool(function_declarations=[function])],
+            tool_config=types.ToolConfig(
+                function_calling_config=types.FunctionCallingConfig(
+                    mode="ANY",
+                    allowed_function_names=["draft_homepage_content"],
+                )
+            ),
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+        ),
+    )
+    function_calls = response.function_calls or []
+    if len(function_calls) != 1 or function_calls[0].name != "draft_homepage_content":
+        raise RuntimeError("The model did not return the required homepage draft.")
+    return _execute_tool(
+        function_calls[0].name,
+        dict(function_calls[0].args or {}),
+        api_key,
+    )
+
+
+def _assistant_failure_message(exc: Exception, tool_ran: bool = False) -> str:
+    code = getattr(exc, "code", getattr(exc, "status_code", None))
+    status = str(getattr(exc, "status", "")).upper()
+    details = f"{getattr(exc, 'message', '')} {exc}".casefold()
+    token_limit = "token" in details and any(
+        marker in details
+        for marker in ("limit", "maximum", "max ", "exceed", "too many", "per minute", "per day")
+    )
+
+    if token_limit:
+        reason = "the model's token limit was reached"
+        next_step = "Shorten the prompt or conversation and retry."
+    elif (
+        code == 429
+        or status == "RESOURCE_EXHAUSTED"
+        or any(marker in details for marker in ("rate limit", "quota exceeded", "resource_exhausted"))
+    ):
+        reason = "the Gemini API quota or rate limit was reached"
+        next_step = "Check your API quota or retry after it resets."
+    elif code in (401, 403):
+        reason = "the Gemini API key or permissions were rejected"
+        next_step = "Check the API key and its permissions in Settings."
+    elif code is not None:
+        reason = f"the Gemini API returned error {code}"
+        next_step = "Please retry after checking the service status."
+    else:
+        reason = f"the request failed ({type(exc).__name__})"
+        next_step = "Please retry the request."
+
+    message = f"The AI task failed because {reason}. {next_step}"
+    if tool_ran:
+        return f"{message} A tool already ran, so verify any changes before retrying."
+    return f"{message} No result was returned."
+
+
 def run_assistant_turn(
     user_id: int,
     prompt: str,
     image_data: bytes | None = None,
     image_mime_type: str = "",
+    page_context: str = "assistant",
 ) -> dict[str, Any]:
     """Run one AI Studio turn with automatic function calling and save messages to SQLite."""
     clean_prompt = prompt.strip()
@@ -973,6 +1210,34 @@ def run_assistant_turn(
 
     # Build recent conversational context
     past = db.list_ai_messages(user_id, limit=10)
+    recent_user_context = " ".join(item["text"] for item in past if item["role"] == "user")
+    previous_user_prompt = next(
+        (
+            item["text"]
+            for item in reversed(past[:-1])
+            if item["role"] == "user"
+        ),
+        "",
+    )
+    page_context_key = page_context if page_context in _AI_PAGE_CONTEXT_LABELS else "assistant"
+    homepage_context = (
+        " homepage content draft"
+        if page_context_key in {"content", "homepage"}
+        else ""
+    )
+    homepage_edit_request = _is_homepage_content_edit_request(
+        clean_prompt,
+        recent_user_context + homepage_context,
+        previous_user_prompt,
+    )
+    system_instruction = (
+        SYSTEM_PROMPT
+        + f"\n\nThe administrator is currently on {_AI_PAGE_CONTEXT_LABELS[page_context_key]}. "
+        "Interpret references such as 'this' or 'here' using that page as context, but only use "
+        "tools that actually support the requested change. Homepage edits must be saved as drafts "
+        "for admin review; never publish homepage content automatically. If this page has no "
+        "supported editing action, explain what can be changed or ask a focused question."
+    )
     history: list[dict[str, Any]] = []
     for item in past[:-1]:
         step_type = "user_input" if item["role"] == "user" else "model_output"
@@ -994,6 +1259,7 @@ def run_assistant_turn(
 
     selected_model = CHAT_MODELS[0]
     interaction = None
+    turn_succeeded = True
 
     # Model call with automatic fallback on 503/429
     def _call_chat(hist: list[dict[str, Any]]):
@@ -1004,7 +1270,7 @@ def run_assistant_turn(
                 res = client.interactions.create(
                     model=m,
                     store=False,
-                    system_instruction=SYSTEM_PROMPT,
+                    system_instruction=system_instruction,
                     input=hist,
                     tools=TOOL_DECLARATIONS,
                 )
@@ -1016,39 +1282,69 @@ def run_assistant_turn(
         raise last_err or RuntimeError("All Gemini models failed.")
 
     try:
-        interaction = _call_chat(history)
-        for _round in range(4):
-            steps = getattr(interaction, "steps", None) or []
-            fc_steps = [s for s in steps if getattr(s, "type", "") == "function_call"]
-            if not fc_steps:
-                break
-
-            for s in steps:
-                history.append(s.model_dump())
-
-            for fc in fc_steps:
-                collected_tools.append(fc.name)
-                res, media_out = _execute_tool(fc.name, dict(fc.arguments or {}), api_key)
-                collected_media.extend(media_out)
-                history.append(
-                    {
-                        "type": "function_result",
-                        "name": fc.name,
-                        "call_id": fc.id,
-                        "result": [{"type": "text", "text": json.dumps(res, ensure_ascii=False)}],
-                    }
+        if homepage_edit_request:
+            result, media_out = _generate_homepage_draft(client, selected_model, clean_prompt, api_key)
+            collected_media.extend(media_out)
+            if result.get("ok"):
+                collected_tools.append("draft_homepage_content")
+                reply_text = (
+                    "I've saved the updated homepage section as a draft. Review it at /admin/content; "
+                    "it won't appear on the live homepage until you publish it."
                 )
+            else:
+                turn_succeeded = False
+                reply_text = (
+                    f"The homepage draft could not be saved: "
+                    f"{result.get('error', 'invalid draft content')}. "
+                    "No changes were made."
+                )
+        else:
             interaction = _call_chat(history)
+            for _round in range(4):
+                steps = getattr(interaction, "steps", None) or []
+                fc_steps = [s for s in steps if getattr(s, "type", "") == "function_call"]
+                if not fc_steps:
+                    break
 
-        reply_text = (interaction.output_text or "").strip() if interaction else ""
-        if not reply_text:
-            reply_text = "All done! I've completed your request inside the studio."
+                for s in steps:
+                    history.append(s.model_dump())
+
+                for fc in fc_steps:
+                    collected_tools.append(fc.name)
+                    res, media_out = _execute_tool(fc.name, dict(fc.arguments or {}), api_key)
+                    collected_media.extend(media_out)
+                    history.append(
+                        {
+                            "type": "function_result",
+                            "name": fc.name,
+                            "call_id": fc.id,
+                            "result": [{"type": "text", "text": json.dumps(res, ensure_ascii=False)}],
+                        }
+                    )
+                interaction = _call_chat(history)
+
+            reply_text = (interaction.output_text or "").strip() if interaction else ""
+            if not reply_text:
+                turn_succeeded = False
+                if collected_tools:
+                    reply_text = (
+                        "The AI returned no final response after running a tool. "
+                        "The result is unconfirmed; verify any changes before retrying."
+                    )
+                else:
+                    reply_text = (
+                        "The AI returned an empty response. The task failed; no result was returned."
+                    )
 
     except Exception as exc:
-        reply_text = (
-            f"I ran into a temporary API limit or connection issue ({type(exc).__name__}). "
-            f"Please try again in a moment or verify your Gemini API key in Settings!"
-        )
+        turn_succeeded = False
+        if homepage_edit_request:
+            failure = _assistant_failure_message(exc, bool(collected_tools))
+            reply_text = f"The homepage draft could not be saved. {failure}"
+            if not collected_tools:
+                reply_text += " No changes were made."
+        else:
+            reply_text = _assistant_failure_message(exc, bool(collected_tools))
 
     last_media = collected_media[-1] if collected_media else {"media_type": "", "media_url": ""}
     db.add_ai_message(
@@ -1057,16 +1353,24 @@ def run_assistant_turn(
         reply_text,
         media_type=last_media["media_type"],
         media_url=last_media["media_url"],
-        meta={"tools": collected_tools, "media": collected_media, "model": selected_model},
+        meta={
+            "tools": collected_tools,
+            "media": collected_media,
+            "model": selected_model,
+            "task_error": not turn_succeeded,
+        },
     )
-    return {
-        "ok": True,
+    result = {
+        "ok": turn_succeeded,
         "reply": reply_text,
         "media": collected_media,
         "tools": collected_tools,
         "model": selected_model,
         "channel": db.get_channel_profile() if "update_channel_stats" in collected_tools else None,
     }
+    if not turn_succeeded:
+        result["error"] = reply_text
+    return result
 
 
 def _clean_text_for_speech(text: str) -> str:

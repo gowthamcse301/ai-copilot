@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="stylesheet" href="/homepage-custom.css" />
 </head>
 <body>
 
@@ -461,6 +462,12 @@
     </div>
   </section>
 
+  {% if homepage_content_html %}
+    <section class="container homepage-content-section" aria-label="Happy Toonzz homepage update">
+      <div class="homepage-content-card happy-toonzz-content">{{ homepage_content_html|safe }}</div>
+    </section>
+  {% endif %}
+
   <!-- Fan & Collab Message Form -->
   <section class="container" id="contact">
     <div class="section-head">
@@ -536,6 +543,10 @@
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  {% if admin %}
+    {% include "_assistant_widget.html" %}
+  {% endif %}
 
   <script>
     const LOOKS = {{ looks | tojson }};

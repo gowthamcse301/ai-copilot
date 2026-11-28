@@ -1,0 +1,183 @@
+{% extends "admin_base.html" %}
+
+{% block admin_content %}
+  <div class="admin-page-column">
+    <section class="panel-card admin-panel admin-page-panel">
+      <div class="section-kicker">CUSTOM HOMEPAGE SECTION</div>
+      <h2>Draft homepage content and styles</h2>
+      <p class="homepage-content-help">
+        The AI can draft HTML and CSS separately. HTML scripts, inline styles, forms, and embedded players are removed.
+        CSS applies across the public website after publishing. Saving creates a preview; it does not publish live.
+      </p>
+      <div id="homepageDraftSyncNotice" class="homepage-draft-sync-notice" role="status" hidden>
+        <span>A newer draft is available. Reload to load it without overwriting your unsaved edits.</span>
+        <button id="reloadHomepageDraft" class="btn btn-secondary btn-sm" type="button">Reload draft</button>
+      </div>
+      <form
+        class="form-grid homepage-content-form"
+        action="/admin/content/draft"
+        method="post"
+        data-draft-updated="{{ draft_updated_at }}"
+      >
+        <div class="field full">
+          <label for="homepageContentHtml">HTML content</label>
+          <textarea
+            id="homepageContentHtml"
+            name="content_html"
+            rows="12"
+            maxlength="8000"
+            required
+            placeholder="<h2>News from Happy Toonzz</h2><p>Share an update with your visitors.</p>"
+          >{{ draft_html }}</textarea>
+          <small>Up to 8,000 characters. Allowed HTML is sanitized before preview and publish.</small>
+        </div>
+        <div class="field full">
+          <label for="homepageContentCss">CSS for the public website</label>
+          <textarea
+            id="homepageContentCss"
+            name="content_css"
+            rows="10"
+            maxlength="8000"
+            placeholder=".happy-toonzz-title { color: #684dc0; }&#10;@media (max-width: 700px) { .happy-toonzz-card { padding: 1rem; } }"
+          >{{ draft_css }}</textarea>
+          <small>
+            Up to 8,000 characters. Add class names in the HTML (for example
+            <code>class="happy-toonzz-title"</code>) and style them here. External imports and URL-loaded resources are blocked.
+          </small>
+        </div>
+        <div class="field full">
+          <button class="btn btn-primary" type="submit">Save Draft &amp; Preview</button>
+        </div>
+      </form>
+    </section>
+
+    <div class="admin-layout homepage-content-previews">
+      <section class="panel-card admin-panel admin-page-panel">
+        <div class="section-kicker">REVIEW BEFORE PUBLISHING</div>
+        <h2>Draft preview</h2>
+        {% if draft_html %}
+          <iframe
+            class="homepage-content-preview-frame"
+            title="Draft homepage content and CSS preview"
+            sandbox
+            srcdoc="{{ draft_preview_document }}"
+          ></iframe>
+          <form
+            class="homepage-publish-form"
+            action="/admin/content/publish"
+            method="post"
+            onsubmit="return confirm('Publish this content on the live homepage?')"
+          >
+            <button class="btn btn-primary" type="submit">Publish to Homepage</button>
+          </form>
+        {% else %}
+          <p class="admin-empty-state">Ask the AI to draft a homepage update, or write HTML above and save it for preview.</p>
+        {% endif %}
+      </section>
+
+      <section class="panel-card admin-panel admin-page-panel">
+        <div class="section-kicker">CURRENTLY LIVE</div>
+        <h2>Published section</h2>
+        {% if published_html %}
+          <iframe
+            class="homepage-content-preview-frame"
+            title="Published homepage content and CSS preview"
+            sandbox
+            srcdoc="{{ published_preview_document }}"
+          ></iframe>
+        {% else %}
+          <p class="admin-empty-state">Nothing has been published in this custom section yet.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <section class="panel-card admin-panel admin-page-panel">
+      <div class="admin-list-heading">
+        <div>
+          <div class="section-kicker">VERSION HISTORY</div>
+          <h2>Previous drafts and publishes</h2>
+        </div>
+        <span class="admin-count-badge">{{ versions|length }}</span>
+      </div>
+      {% if versions %}
+        <div class="homepage-version-list">
+          {% for version in versions %}
+            <article class="homepage-version-item">
+              <div>
+                <strong>{{ version.action|title }} · {{ version.source|title }}</strong>
+                <small>{{ version.summary or 'Homepage content version' }}</small>
+                <time datetime="{{ version.created_at }}">{{ version.created_at }}</time>
+              </div>
+              <form action="/admin/content/versions/{{ version.id }}/restore" method="post">
+                <button class="btn btn-secondary btn-sm" type="submit">Restore as Draft</button>
+              </form>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="admin-empty-state">Saved versions will appear here.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <script>
+    (() => {
+      const form = document.querySelector(".homepage-content-form");
+      const htmlField = document.querySelector("#homepageContentHtml");
+      const cssField = document.querySelector("#homepageContentCss");
+      const notice = document.querySelector("#homepageDraftSyncNotice");
+      const reloadButton = document.querySelector("#reloadHomepageDraft");
+      if (!form || !htmlField || !cssField || !notice || !reloadButton) return;
+
+      const initialHtml = htmlField.value;
+      const initialCss = cssField.value;
+      let checking = false;
+      const reloadCurrentPage = () => {
+        if (typeof window.adminNavigateToIfClean === "function") {
+          window.adminNavigateToIfClean(window.location.href);
+        } else if (typeof window.adminNavigateTo === "function") {
+          window.adminNavigateTo(window.location.href);
+        } else {
+          window.location.reload();
+        }
+      };
+
+      async function checkForDraftChanges() {
+        if (document.hidden || checking) return;
+        checking = true;
+        try {
+          const response = await fetch("/admin/content/draft-state", {
+            credentials: "same-origin",
+            cache: "no-store",
+          });
+          if (!response.ok) throw new Error("Unable to check for a newer draft.");
+          const state = await response.json();
+          if (!state.updated_at || state.updated_at === form.dataset.draftUpdated) return;
+
+          if (htmlField.value !== initialHtml || cssField.value !== initialCss) {
+            notice.hidden = false;
+            return;
+          }
+          reloadCurrentPage();
+        } catch {
+          notice.querySelector("span").textContent =
+            "Could not check for a newer draft. Refresh this page to load the latest version.";
+          notice.hidden = false;
+        } finally {
+          checking = false;
+        }
+      }
+
+      reloadButton.addEventListener("click", reloadCurrentPage);
+      document.addEventListener("visibilitychange", checkForDraftChanges);
+      document.addEventListener("admin:data-changed", checkForDraftChanges);
+      const draftSyncInterval = window.setInterval(checkForDraftChanges, 3000);
+      window.addEventListener("admin:page-unmount", () => {
+        window.clearInterval(draftSyncInterval);
+        document.removeEventListener("visibilitychange", checkForDraftChanges);
+        document.removeEventListener("admin:data-changed", checkForDraftChanges);
+      }, { once: true });
+      checkForDraftChanges();
+    })();
+  </script>
+{% endblock %}

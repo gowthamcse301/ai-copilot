@@ -6,3 +6,5 @@ google-genai>=3.5.0
 python-dotenv>=1.0.1
 edge-tts>=7.0.0
 pillow>=11.0.0
+nh3>=0.2.21
+tinycss2>=1.4.0

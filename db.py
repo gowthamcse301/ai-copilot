@@ -172,13 +172,75 @@ def init_db() -> str | None:
                 meta_json TEXT NOT NULL DEFAULT '{}',
                 created_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS ai_tasks (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                prompt TEXT NOT NULL,
+                status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed')),
+                result_json TEXT NOT NULL DEFAULT '{}',
+                error TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS homepage_content (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                draft_html TEXT NOT NULL DEFAULT '',
+                draft_css TEXT NOT NULL DEFAULT '',
+                published_html TEXT NOT NULL DEFAULT '',
+                published_css TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS homepage_content_versions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content_html TEXT NOT NULL,
+                content_css TEXT NOT NULL DEFAULT '',
+                action TEXT NOT NULL CHECK (action IN ('draft', 'published')),
+                source TEXT NOT NULL CHECK (source IN ('ai', 'admin', 'restore')),
+                summary TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            );
             """
+        )
+
+        homepage_content_columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(homepage_content)").fetchall()
+        }
+        if "draft_css" not in homepage_content_columns:
+            conn.execute("ALTER TABLE homepage_content ADD COLUMN draft_css TEXT NOT NULL DEFAULT ''")
+        if "published_css" not in homepage_content_columns:
+            conn.execute("ALTER TABLE homepage_content ADD COLUMN published_css TEXT NOT NULL DEFAULT ''")
+
+        homepage_version_columns = {
+            row["name"] for row in conn.execute("PRAGMA table_info(homepage_content_versions)").fetchall()
+        }
+        if "content_css" not in homepage_version_columns:
+            conn.execute(
+                "ALTER TABLE homepage_content_versions ADD COLUMN content_css TEXT NOT NULL DEFAULT ''"
+            )
+
+        conn.execute(
+            """
+            UPDATE ai_tasks
+            SET status = 'failed',
+                error = 'The server restarted before this task finished.',
+                updated_at = ?
+            WHERE status IN ('queued', 'running')
+            """,
+            (_utc_now().isoformat(),),
         )
 
         # Clean up any non-admin rows since auth is Master Admin-only
         conn.execute("DELETE FROM users WHERE role != 'admin'")
 
         now = _utc_now().isoformat()
+
+        conn.execute(
+            "INSERT OR IGNORE INTO homepage_content (id, updated_at) VALUES (1, ?)",
+            (now,),
+        )
 
         row = conn.execute("SELECT id FROM channel_profile WHERE id = 1").fetchone()
         if not row:
@@ -479,6 +541,123 @@ def get_channel_profile() -> dict[str, Any]:
         return dict(row) if row else {}
 
 
+def get_homepage_content() -> dict[str, Any]:
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT draft_html, draft_css, published_html, published_css, updated_at
+            FROM homepage_content
+            WHERE id = 1
+            """
+        ).fetchone()
+        return dict(row) if row else {
+            "draft_html": "",
+            "draft_css": "",
+            "published_html": "",
+            "published_css": "",
+            "updated_at": "",
+        }
+
+
+def save_homepage_content_draft(
+    content_html: str,
+    source: str,
+    summary: str,
+    content_css: str | None = None,
+) -> None:
+    if source not in {"ai", "admin", "restore"}:
+        raise ValueError("Unsupported homepage draft source.")
+    now = _utc_now().isoformat()
+    with get_conn() as conn:
+        current_css = conn.execute(
+            "SELECT draft_css FROM homepage_content WHERE id = 1"
+        ).fetchone()["draft_css"]
+        draft_css = current_css if content_css is None else content_css
+        conn.execute(
+            "UPDATE homepage_content SET draft_html = ?, draft_css = ?, updated_at = ? WHERE id = 1",
+            (content_html, draft_css, now),
+        )
+        conn.execute(
+            """
+            INSERT INTO homepage_content_versions
+                (content_html, content_css, action, source, summary, created_at)
+            VALUES (?, ?, 'draft', ?, ?, ?)
+            """,
+            (content_html, draft_css, source, summary.strip()[:200], now),
+        )
+        conn.commit()
+
+
+def publish_homepage_content(content_html: str, content_css: str | None = None) -> None:
+    if not content_html.strip():
+        raise ValueError("There is no homepage draft to publish.")
+    now = _utc_now().isoformat()
+    with get_conn() as conn:
+        current_css = conn.execute(
+            "SELECT draft_css FROM homepage_content WHERE id = 1"
+        ).fetchone()["draft_css"]
+        published_css = current_css if content_css is None else content_css
+        conn.execute(
+            """
+            UPDATE homepage_content
+            SET draft_html = ?, published_html = ?, draft_css = ?, published_css = ?, updated_at = ?
+            WHERE id = 1
+            """,
+            (content_html, content_html, published_css, published_css, now),
+        )
+        conn.execute(
+            """
+            INSERT INTO homepage_content_versions
+                (content_html, content_css, action, source, summary, created_at)
+            VALUES (?, ?, 'published', 'admin', 'Published reviewed draft', ?)
+            """,
+            (content_html, published_css, now),
+        )
+        conn.commit()
+
+
+def restore_homepage_content_version(version_id: int) -> bool:
+    now = _utc_now().isoformat()
+    with get_conn() as conn:
+        version = conn.execute(
+            "SELECT content_html, content_css FROM homepage_content_versions WHERE id = ?",
+            (version_id,),
+        ).fetchone()
+        if not version:
+            return False
+        content_html = version["content_html"]
+        content_css = version["content_css"]
+        conn.execute(
+            "UPDATE homepage_content SET draft_html = ?, draft_css = ?, updated_at = ? WHERE id = 1",
+            (content_html, content_css, now),
+        )
+        conn.execute(
+            """
+            INSERT INTO homepage_content_versions
+                (content_html, content_css, action, source, summary, created_at)
+            VALUES (?, ?, 'draft', 'restore', ?, ?)
+            """,
+            (content_html, content_css, f"Restored version {version_id} as a draft", now),
+        )
+        conn.commit()
+        return True
+
+
+def list_homepage_content_versions(limit: int = 30) -> list[dict[str, Any]]:
+    bounded_limit = max(1, min(limit, 100))
+    with get_conn() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, action, source, summary, created_at
+            FROM homepage_content_versions
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (bounded_limit,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
 def update_channel_profile(fields: dict[str, str]) -> None:
     """Update editable channel metadata and follower stats."""
     allowed = {
@@ -657,3 +836,90 @@ def clear_ai_messages(user_id: int) -> None:
     with get_conn() as conn:
         conn.execute("DELETE FROM ai_messages WHERE user_id = ?", (user_id,))
         conn.commit()
+
+
+def create_ai_task(user_id: int, prompt: str) -> str | None:
+    """Create one background task per admin; return None if another is active."""
+    task_id = secrets.token_urlsafe(18)
+    now = _utc_now().isoformat()
+    with get_conn() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        active = conn.execute(
+            """
+            SELECT id FROM ai_tasks
+            WHERE user_id = ? AND status IN ('queued', 'running')
+            LIMIT 1
+            """,
+            (user_id,),
+        ).fetchone()
+        if active:
+            return None
+        conn.execute(
+            """
+            INSERT INTO ai_tasks (id, user_id, prompt, status, created_at, updated_at)
+            VALUES (?, ?, ?, 'queued', ?, ?)
+            """,
+            (task_id, user_id, prompt, now, now),
+        )
+        conn.commit()
+    return task_id
+
+
+def update_ai_task(
+    task_id: str,
+    status: str,
+    result: dict[str, Any] | None = None,
+    error: str = "",
+) -> None:
+    if status not in {"running", "completed", "failed"}:
+        raise ValueError("Invalid AI task status.")
+    with get_conn() as conn:
+        conn.execute(
+            """
+            UPDATE ai_tasks
+            SET status = ?, result_json = ?, error = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (
+                status,
+                json.dumps(result or {}),
+                error,
+                _utc_now().isoformat(),
+                task_id,
+            ),
+        )
+        conn.commit()
+
+
+def _ai_task_from_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    task = dict(row)
+    try:
+        task["result"] = json.loads(task.pop("result_json"))
+    except (TypeError, json.JSONDecodeError):
+        task["result"] = {}
+    return task
+
+
+def get_ai_task(user_id: int, task_id: str) -> dict[str, Any] | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM ai_tasks WHERE user_id = ? AND id = ?",
+            (user_id, task_id),
+        ).fetchone()
+    return _ai_task_from_row(row)
+
+
+def get_active_ai_task(user_id: int) -> dict[str, Any] | None:
+    with get_conn() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM ai_tasks
+            WHERE user_id = ? AND status IN ('queued', 'running')
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (user_id,),
+        ).fetchone()
+    return _ai_task_from_row(row)

@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body class="{{ 'admin-page assistant-page' if active_admin_page == 'assistant' else 'admin-page' }}">
-  <div class="admin-app-shell">
+  <div class="admin-app-shell" id="adminAppShell">
     {% include "_admin_sidebar.html" %}
     <div class="admin-main">
       <header class="admin-topbar">
@@ -28,6 +28,9 @@
       </header>
 
       <main class="admin-content{% if active_admin_page == 'assistant' %} assistant-shell{% endif %}">
+        <div id="adminDataRefreshNotice" class="alert alert-ok" role="status" hidden>
+          New data is available. This page will refresh automatically after you save or discard your unsaved changes.
+        </div>
         {% if saved == 'channel' %}
           <div class="alert alert-ok">Channel details and follower stats updated.</div>
         {% elif saved == 'look' %}
@@ -42,6 +45,12 @@
           <div class="alert alert-ok">YouTube API key saved.</div>
         {% elif saved == 'ai_cleared' %}
           <div class="alert alert-ok">AI conversation history cleared.</div>
+        {% elif saved == 'draft' %}
+          <div class="alert alert-ok">Homepage draft saved. Review the preview before publishing.</div>
+        {% elif saved == 'published' %}
+          <div class="alert alert-ok">Homepage content published.</div>
+        {% elif saved == 'restored' %}
+          <div class="alert alert-ok">Previous version restored as a draft. Review it before publishing.</div>
         {% elif saved == 'message_deleted' %}
           <div class="alert alert-ok">Message removed from inbox.</div>
         {% endif %}
@@ -54,11 +63,17 @@
           <div class="alert alert-err">Current password did not match.</div>
         {% elif error == 'cred_invalid' %}
           <div class="alert alert-err">Invalid username or password (username 3–32 characters; password at least 6).</div>
+        {% elif error == 'invalid_content' %}
+          <div class="alert alert-err">Homepage content is empty, too long, or could not be sanitized. Review the draft and try again.</div>
+        {% elif error == 'version_not_found' %}
+          <div class="alert alert-err">That homepage version could not be found.</div>
         {% endif %}
 
         {% block admin_content %}{% endblock %}
       </main>
     </div>
   </div>
+  {% include "_assistant_widget.html" %}
+  <script src="/static/admin_navigation.js"></script>
 </body>
 </html>

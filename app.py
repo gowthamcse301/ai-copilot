@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import secrets
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 import urllib.error
 import urllib.request
 from contextlib import asynccontextmanager
@@ -24,6 +26,7 @@ from PIL import Image, UnidentifiedImageError
 
 import ai_assistant
 import db
+from content_safety import sanitize_homepage_css, sanitize_homepage_html
 
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "images" / "uploads"
@@ -31,6 +34,7 @@ AI_MEDIA_DIR = BASE_DIR / "static" / "ai_media"
 LYRICS_PATH = BASE_DIR / "assets" / "exact_audio_cues.json"
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 ALLOWED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+_AI_TASK_EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="happy-toonzz-ai")
 
 
 @asynccontextmanager
@@ -206,11 +210,23 @@ async def favicon():
     return Response(status_code=204)
 
 
+@app.get("/homepage-custom.css")
+async def homepage_custom_css():
+    content = db.get_homepage_content()
+    css = sanitize_homepage_css(content["published_css"]) if content["published_css"] else ""
+    return Response(
+        content=css,
+        media_type="text/css",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, msg_sent: str | None = None):
     admin = _current_admin(request)
     channel = db.get_channel_profile()
     instagram_url = channel.get("instagram_url") or "https://www.instagram.com/happy_toonzz/"
+    homepage_content = db.get_homepage_content()
     looks = db.get_looks()
     lyrics = _load_lyrics()
     has_ref_video = (BASE_DIR / "assets" / "reference-video.mp4").exists()
@@ -221,12 +237,31 @@ async def home(request: Request, msg_sent: str | None = None):
         {
             "admin": admin,
             "channel": channel,
+            "has_api_key": bool(db.get_gemini_api_key()) if admin else False,
+            "ai_history": [],
+            "assistant_page_context": "homepage",
             "instagram_embed_url": _instagram_profile_url(instagram_url),
+            "homepage_content_html": sanitize_homepage_html(homepage_content["published_html"])
+            if homepage_content["published_html"]
+            else "",
             "looks": looks,
             "lyrics": lyrics,
             "has_ref_video": has_ref_video,
             "msg_sent": msg_sent == "1",
         },
+    )
+
+
+def _homepage_content_preview_document(content_html: str, content_css: str) -> str:
+    return (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        '<base href="/">'
+        '<link rel="stylesheet" href="/static/styles.css">'
+        f"<style>{content_css}</style></head><body>"
+        '<main class="container homepage-content-section">'
+        f'<div class="homepage-content-card happy-toonzz-content">{content_html}</div>'
+        "</main></body></html>"
     )
 
 
@@ -331,6 +366,10 @@ def _render_admin_page(
         "page_description": page_description,
         "saved": saved,
         "error": error,
+        "ai_history": (
+            db.list_ai_messages(auth["id"], limit=30) if active_page == "assistant" else []
+        ),
+        "assistant_page_context": active_page,
         **page_context,
     }
     return templates.TemplateResponse(request, template_name, context)
@@ -424,6 +463,107 @@ async def admin_settings_page(request: Request, saved: str = "", error: str = ""
     )
 
 
+@app.get("/admin/content", response_class=HTMLResponse)
+async def admin_homepage_content_page(request: Request, saved: str = "", error: str = ""):
+    auth = _require_admin(request, "/admin/content")
+    if isinstance(auth, RedirectResponse):
+        return auth
+    content = db.get_homepage_content()
+    draft_html = sanitize_homepage_html(content["draft_html"]) if content["draft_html"] else ""
+    draft_css = sanitize_homepage_css(content["draft_css"]) if content["draft_css"] else ""
+    published_html = (
+        sanitize_homepage_html(content["published_html"]) if content["published_html"] else ""
+    )
+    published_css = (
+        sanitize_homepage_css(content["published_css"]) if content["published_css"] else ""
+    )
+    return _render_admin_page(
+        request,
+        "admin_content.html",
+        "content",
+        "Website content",
+        "Review AI-written HTML and CSS before publishing it to the public website.",
+        saved=saved,
+        error=error,
+        next_url="/admin/content",
+        admin_user=auth,
+        draft_html=draft_html,
+        draft_css=draft_css,
+        draft_preview_document=_homepage_content_preview_document(draft_html, draft_css),
+        draft_updated_at=content["updated_at"],
+        published_html=published_html,
+        published_preview_document=_homepage_content_preview_document(published_html, published_css),
+        versions=db.list_homepage_content_versions(),
+    )
+
+
+@app.post("/admin/content/draft")
+async def admin_save_homepage_draft(
+    request: Request,
+    content_html: str = Form(...),
+    content_css: str = Form(""),
+):
+    _check_same_origin(request)
+    auth = _require_admin(request, "/admin/content")
+    if isinstance(auth, RedirectResponse):
+        return auth
+    try:
+        sanitized_html = sanitize_homepage_html(content_html)
+        sanitized_css = sanitize_homepage_css(content_css)
+    except ValueError:
+        return RedirectResponse(url="/admin/content?error=invalid_content", status_code=303)
+    db.save_homepage_content_draft(
+        sanitized_html,
+        source="admin",
+        summary="Admin edited draft",
+        content_css=sanitized_css,
+    )
+    return RedirectResponse(url="/admin/content?saved=draft", status_code=303)
+
+
+@app.get("/admin/content/draft-state")
+async def admin_homepage_draft_state(request: Request):
+    auth = _require_admin(request, "/admin/content")
+    if isinstance(auth, RedirectResponse):
+        return JSONResponse(
+            {"error": "authentication_required"},
+            status_code=401,
+            headers={"Cache-Control": "no-store"},
+        )
+    content = db.get_homepage_content()
+    return JSONResponse(
+        {"updated_at": content["updated_at"]},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.post("/admin/content/publish")
+async def admin_publish_homepage_content(request: Request):
+    _check_same_origin(request)
+    auth = _require_admin(request, "/admin/content")
+    if isinstance(auth, RedirectResponse):
+        return auth
+    content = db.get_homepage_content()
+    try:
+        sanitized_html = sanitize_homepage_html(content["draft_html"])
+        sanitized_css = sanitize_homepage_css(content["draft_css"])
+    except ValueError:
+        return RedirectResponse(url="/admin/content?error=invalid_content", status_code=303)
+    db.publish_homepage_content(sanitized_html, sanitized_css)
+    return RedirectResponse(url="/admin/content?saved=published", status_code=303)
+
+
+@app.post("/admin/content/versions/{version_id}/restore")
+async def admin_restore_homepage_content_version(request: Request, version_id: int):
+    _check_same_origin(request)
+    auth = _require_admin(request, "/admin/content")
+    if isinstance(auth, RedirectResponse):
+        return auth
+    if not db.restore_homepage_content_version(version_id):
+        return RedirectResponse(url="/admin/content?error=version_not_found", status_code=303)
+    return RedirectResponse(url="/admin/content?saved=restored", status_code=303)
+
+
 @app.get("/admin/assistant", response_class=HTMLResponse)
 async def admin_assistant_page(
     request: Request,
@@ -444,8 +584,49 @@ async def admin_assistant_page(
         error=error,
         next_url="/admin/assistant",
         admin_user=auth,
-        ai_history=db.list_ai_messages(auth["id"], limit=30),
     )
+
+
+def _run_ai_chat_task(
+    task_id: str,
+    user_id: int,
+    prompt: str,
+    image_data: bytes | None,
+    image_mime_type: str,
+    page_context: str,
+) -> None:
+    db.update_ai_task(task_id, "running")
+    try:
+        result = ai_assistant.run_assistant_turn(
+            user_id,
+            prompt,
+            image_data=image_data,
+            image_mime_type=image_mime_type,
+            page_context=page_context,
+        )
+    except Exception:
+        logging.getLogger(__name__).exception("AI task %s failed", task_id)
+        error = "The assistant task failed. Please try again."
+        db.add_ai_message(user_id, "assistant", error, meta={"task_error": True})
+        db.update_ai_task(task_id, "failed", error=error)
+        return
+    if result.get("ok") is False:
+        error = result.get("error") or result.get("reply")
+        if not isinstance(error, str) or not error.strip():
+            error = "The assistant returned no result. The task failed."
+        db.update_ai_task(task_id, "failed", result=result, error=error)
+        return
+    db.update_ai_task(task_id, "completed", result=result)
+
+
+def _ai_task_response(task: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "task_id": task["id"],
+        "status": task["status"],
+        "prompt": task["prompt"],
+        "result": task["result"],
+        "error": task["error"],
+    }
 
 
 @app.post("/admin/ai/chat")
@@ -453,6 +634,7 @@ def admin_ai_chat(
     request: Request,
     prompt: str = Form(""),
     image_file: UploadFile | None = File(default=None),
+    page_context: str = Form("assistant"),
 ):
     _check_same_origin(request)
     auth = _require_admin(request)
@@ -488,13 +670,68 @@ def admin_ai_chat(
     if not prompt.strip():
         return JSONResponse({"error": "Enter a message or attach an image."}, status_code=400)
 
-    result = ai_assistant.run_assistant_turn(
-        auth["id"],
-        prompt,
-        image_data=image_data,
-        image_mime_type=image_mime_type,
+    task_id = db.create_ai_task(auth["id"], prompt.strip())
+    if task_id is None:
+        active_task = db.get_active_ai_task(auth["id"])
+        return JSONResponse(
+            {
+                "error": "An AI task is already running.",
+                "task": _ai_task_response(active_task) if active_task else None,
+            },
+            status_code=409,
+        )
+    try:
+        _AI_TASK_EXECUTOR.submit(
+            _run_ai_chat_task,
+            task_id,
+            auth["id"],
+            prompt.strip(),
+            image_data,
+            image_mime_type,
+            page_context,
+        )
+    except RuntimeError:
+        error = "The assistant task queue is unavailable. Please try again."
+        db.update_ai_task(task_id, "failed", error=error)
+        return JSONResponse({"error": error}, status_code=503)
+    return JSONResponse({"task_id": task_id, "status": "queued"}, status_code=202)
+
+
+@app.get("/admin/ai/history")
+async def admin_ai_history(request: Request):
+    auth = _require_admin(request)
+    if isinstance(auth, RedirectResponse):
+        return JSONResponse({"error": "Authentication required"}, status_code=401)
+    return JSONResponse(
+        {"messages": db.list_ai_messages(auth["id"], limit=30)},
+        headers={"Cache-Control": "no-store"},
     )
-    return JSONResponse(result)
+
+
+@app.get("/admin/ai/tasks/active")
+async def admin_ai_active_task(request: Request):
+    auth = _require_admin(request)
+    if isinstance(auth, RedirectResponse):
+        return JSONResponse({"error": "Authentication required"}, status_code=401)
+    task = db.get_active_ai_task(auth["id"])
+    return JSONResponse(
+        {"task": _ai_task_response(task) if task else None},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/admin/ai/tasks/{task_id}")
+async def admin_ai_task_status(request: Request, task_id: str):
+    auth = _require_admin(request)
+    if isinstance(auth, RedirectResponse):
+        return JSONResponse({"error": "Authentication required"}, status_code=401)
+    task = db.get_ai_task(auth["id"], task_id)
+    if task is None:
+        return JSONResponse({"error": "AI task not found."}, status_code=404)
+    return JSONResponse(
+        _ai_task_response(task),
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.post("/admin/ai/tts")
