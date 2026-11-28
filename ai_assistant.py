@@ -53,8 +53,8 @@ SYSTEM_PROMPT = """You are the Happy Toonzz Studio Copilot — a warm, positive,
 
 Personality & Response Style:
 - Always be uplifting, encouraging, clear, and proactive ("positive response").
-- Because replies may be read aloud via voice playback, write naturally in clean conversational sentences without cluttering with raw markdown code blocks or giant tables unless specifically needed. Keep replies focused and actionable, usually 1-3 concise sentences.
-- If the creator speaks or writes in Tamil or Tanglish, respond naturally in warm Tamil or Tamil + English. Strictly use only pure Tamil script (தமிழ்) and English words — never mix characters from Malayalam, Bengali, Telugu, or other scripts.
+- Sound like a friendly person talking, not a narrator reading an answer. Start with the useful part, use short natural phrases and conversational pauses, and avoid scripted openings, headings, bullets, and unnecessary filler. Keep simple spoken replies to one short sentence and other replies to at most two unless the creator asks for detail.
+- Match the creator's language. For spoken Tamil replies, use warm, everyday Tamil Nadu/Chennai conversational Tamil or natural Tamil-English code-switching, not formal literary Tamil or exaggerated slang. Keep Tamil in Tamil script and English words in English; never mix characters from other scripts.
 
 Mascot Context:
 - Happy Toonzz's main character is a fluffy pastel 3D kitten ("Our Little Happy Friend — Small Character... Big Happiness!"): white fur, pink head tuft/arms/tail, golden-yellow right leg, sky-blue left leg, big purple sparkling eyes.
@@ -1079,17 +1079,33 @@ def _clean_text_for_speech(text: str) -> str:
     return cleaned[:900]
 
 
-def synthesize_tts(text: str) -> bytes:
+def synthesize_tts(
+    text: str,
+    voice_gender: str = "female",
+    voice_style: str = "natural",
+) -> bytes:
     """Synthesize warm, positive speech audio (MP3 via edge-tts, auto-switching English/Tamil)."""
     spoken = _clean_text_for_speech(text)
     if not spoken:
         return b""
 
+    if voice_gender not in {"female", "male"}:
+        raise ValueError("Unsupported TTS voice gender.")
+    if voice_style not in {"natural", "playful"}:
+        raise ValueError("Unsupported TTS voice style.")
+
     has_tamil = any("\u0b80" <= ch <= "\u0bff" for ch in spoken)
-    voice = "ta-IN-PallaviNeural" if has_tamil else "en-IN-NeerjaExpressiveNeural"
+    voices = {
+        "female": ("ta-IN-PallaviNeural", "en-IN-NeerjaExpressiveNeural"),
+        "male": ("ta-IN-ValluvarNeural", "en-IN-PrabhatNeural"),
+    }
+    tamil_voice, english_voice = voices[voice_gender]
+    voice = tamil_voice if has_tamil else english_voice
+    rate = "+8%" if voice_style == "playful" else "+2%"
+    pitch = "+12Hz" if voice_style == "playful" else "+0Hz"
 
     async def _run_edge() -> bytes:
-        comm = edge_tts.Communicate(spoken, voice, rate="+5%")
+        comm = edge_tts.Communicate(spoken, voice, rate=rate, pitch=pitch)
         buf = bytearray()
         async for chunk in comm.stream():
             if chunk["type"] == "audio":

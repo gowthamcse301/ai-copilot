@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import secrets
+import threading
+import time
+import urllib.error
+import urllib.request
 from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -106,6 +111,78 @@ def _clean_http_url(url: str) -> str:
     return ""
 
 
+def _instagram_profile_url(url: str) -> str:
+    parsed = urlparse(url.strip())
+    if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"instagram.com", "www.instagram.com"}:
+        return ""
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if len(path_parts) != 1 or path_parts[0].lower() in {"accounts", "explore", "p", "reel", "stories", "tv"}:
+        return ""
+    return f"https://www.instagram.com/{path_parts[0]}/"
+
+
+_YOUTUBE_UPLOADS_CACHE: dict[str, tuple[float, str]] = {}
+_YOUTUBE_UPLOADS_CACHE_LOCK = threading.Lock()
+_YOUTUBE_UPLOADS_CACHE_SECONDS = 6 * 60 * 60
+
+
+def _youtube_uploads_playlist_id(channel: dict[str, Any], api_key: str) -> str:
+    parsed = urlparse(str(channel.get("youtube_url", "")).strip())
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if parsed.hostname in {"youtube.com", "www.youtube.com", "m.youtube.com"} and len(path_parts) > 1:
+        if path_parts[0] == "channel" and path_parts[1].startswith("UC") and len(path_parts[1]) > 2:
+            return f"UU{path_parts[1][2:]}"
+
+    handle = str(channel.get("youtube_handle", "")).strip().lstrip("@")
+    if parsed.hostname in {"youtube.com", "www.youtube.com", "m.youtube.com"} and path_parts:
+        if path_parts[0].startswith("@"):
+            handle = path_parts[0][1:]
+    if not handle:
+        raise HTTPException(status_code=404, detail="A YouTube channel handle is not configured.")
+
+    now = time.monotonic()
+    with _YOUTUBE_UPLOADS_CACHE_LOCK:
+        cached = _YOUTUBE_UPLOADS_CACHE.get(handle)
+        if cached and cached[0] > now:
+            return cached[1]
+
+    if not api_key:
+        raise HTTPException(status_code=503, detail="YouTube Data API key is not configured.")
+
+    query = urlencode({"part": "contentDetails", "forHandle": handle, "key": api_key})
+    request = urllib.request.Request(
+        f"https://www.googleapis.com/youtube/v3/channels?{query}",
+        headers={"Accept": "application/json", "User-Agent": "HappyToonzzStudio/1.0"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=8) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 403:
+            raise HTTPException(
+                status_code=503,
+                detail="YouTube could not look up the channel. Check the API key, API access, and quota.",
+            ) from exc
+        raise HTTPException(status_code=502, detail=f"YouTube channel lookup failed with HTTP {exc.code}.") from exc
+    except (urllib.error.URLError, TimeoutError):
+        raise HTTPException(status_code=502, detail="Could not reach YouTube to load channel videos.") from None
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise HTTPException(status_code=502, detail="YouTube returned an invalid channel response.") from None
+
+    items = data.get("items", []) if isinstance(data, dict) else []
+    if not isinstance(items, list) or not items or not isinstance(items[0], dict):
+        raise HTTPException(status_code=404, detail="YouTube did not find the configured channel.")
+    content_details = items[0].get("contentDetails", {})
+    related_playlists = content_details.get("relatedPlaylists", {}) if isinstance(content_details, dict) else {}
+    playlist_id = related_playlists.get("uploads") if isinstance(related_playlists, dict) else None
+    if not isinstance(playlist_id, str) or not playlist_id:
+        raise HTTPException(status_code=502, detail="YouTube did not return an uploads playlist for this channel.")
+
+    with _YOUTUBE_UPLOADS_CACHE_LOCK:
+        _YOUTUBE_UPLOADS_CACHE[handle] = (time.monotonic() + _YOUTUBE_UPLOADS_CACHE_SECONDS, playlist_id)
+    return playlist_id
+
+
 def _safe_next_url(raw_next: str | None, fallback: str) -> str:
     """Allow relative local paths only."""
     if not raw_next:
@@ -123,9 +200,9 @@ def _safe_next_url(raw_next: str | None, fallback: str) -> str:
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    icon_path = BASE_DIR / "assets" / "sprites" / "expr_happy.png"
+    icon_path = BASE_DIR / "assets" / "sprites" / "happy_toonzz_favicon.ico"
     if icon_path.exists():
-        return FileResponse(str(icon_path), media_type="image/png")
+        return FileResponse(str(icon_path), media_type="image/vnd.microsoft.icon")
     return Response(status_code=204)
 
 
@@ -133,6 +210,7 @@ async def favicon():
 async def home(request: Request, msg_sent: str | None = None):
     admin = _current_admin(request)
     channel = db.get_channel_profile()
+    instagram_url = channel.get("instagram_url") or "https://www.instagram.com/happy_toonzz/"
     looks = db.get_looks()
     lyrics = _load_lyrics()
     has_ref_video = (BASE_DIR / "assets" / "reference-video.mp4").exists()
@@ -143,6 +221,7 @@ async def home(request: Request, msg_sent: str | None = None):
         {
             "admin": admin,
             "channel": channel,
+            "instagram_embed_url": _instagram_profile_url(instagram_url),
             "looks": looks,
             "lyrics": lyrics,
             "has_ref_video": has_ref_video,
@@ -419,12 +498,19 @@ def admin_ai_chat(
 
 
 @app.post("/admin/ai/tts")
-def admin_ai_tts(request: Request, text: str = Form(...)):
+def admin_ai_tts(
+    request: Request,
+    text: str = Form(...),
+    voice_gender: str = Form("female"),
+    voice_style: str = Form("natural"),
+):
     _check_same_origin(request)
     auth = _require_admin(request)
     if isinstance(auth, RedirectResponse):
         return JSONResponse({"error": "Authentication required"}, status_code=401)
-    audio_bytes = ai_assistant.synthesize_tts(text)
+    if voice_gender not in {"female", "male"} or voice_style not in {"natural", "playful"}:
+        return JSONResponse({"error": "Choose a supported voice and style."}, status_code=400)
+    audio_bytes = ai_assistant.synthesize_tts(text, voice_gender, voice_style)
     if not audio_bytes:
         return Response(status_code=204)
     mime = "audio/wav" if audio_bytes[:4] == b"RIFF" else "audio/mpeg"
@@ -646,6 +732,16 @@ async def api_channel():
         "channel": db.get_channel_profile(),
         "looks": db.get_looks(),
     }
+
+
+@app.get("/api/youtube/uploads-playlist")
+async def api_youtube_uploads_playlist():
+    playlist_id = await asyncio.to_thread(
+        _youtube_uploads_playlist_id,
+        db.get_channel_profile(),
+        db.get_youtube_api_key(),
+    )
+    return {"playlist_id": playlist_id}
 
 
 @app.get("/api/health")

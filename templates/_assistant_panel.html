@@ -53,7 +53,8 @@
                   <iframe
                     width="560"
                     height="315"
-                    src="https://www.youtube-nocookie.com/embed/{{ item.media_url }}"
+                    class="youtube-player"
+                    src="https://www.youtube.com/embed/{{ item.media_url }}?enablejsapi=1&amp;origin={{ request.url.scheme }}://{{ request.url.netloc }}"
                     title="YouTube video player"
                     referrerpolicy="strict-origin-when-cross-origin"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -66,11 +67,14 @@
         </div>
       </section>
 
-      <div class="assistant-command-dock">
-        <div id="voiceStatus" class="voice-status">SYSTEM IDLE — AWAITING COMMAND OR VOICE INPUT</div>
+      <div class="assistant-command-dock" id="assistantCommandDock" data-input-mode="type">
+        <div id="voiceStatus" class="voice-status">TYPE MODE — ENTER A MESSAGE OR SWITCH TO VOICE</div>
         <div class="assistant-command-heading">
           <span>COMMAND INPUT</span>
-          <span>TEXT · VOICE · IMAGE</span>
+          <div class="assistant-input-modes" role="group" aria-label="Assistant input mode">
+            <button class="assistant-input-mode is-active" id="typeModeBtn" type="button" aria-pressed="true">Type</button>
+            <button class="assistant-input-mode" id="voiceModeBtn" type="button" aria-pressed="false">Voice</button>
+          </div>
         </div>
 
         <form class="ai-input-bar" id="aiForm" onsubmit="return sendAiPrompt(event)">
@@ -107,16 +111,22 @@
     const aiSendBtn = document.getElementById('aiSendBtn');
     const micBtn = document.getElementById('micBtn');
     const voiceStatus = document.getElementById('voiceStatus');
+    const commandDock = document.getElementById('assistantCommandDock');
+    const typeModeBtn = document.getElementById('typeModeBtn');
+    const voiceModeBtn = document.getElementById('voiceModeBtn');
     const autoSpeakToggle = document.getElementById('autoSpeakToggle');
     const wakeWordToggle = document.getElementById('wakeWordToggle');
     const passiveLoopToggle = document.getElementById('passiveLoopToggle');
     const speechLang = document.getElementById('speechLang');
+    const speechVoiceGender = document.getElementById('speechVoiceGender');
+    const speechVoiceStyle = document.getElementById('speechVoiceStyle');
     const voicePlayer = document.getElementById('voiceAudioPlayer');
     const attachImageBtn = document.getElementById('attachImageBtn');
     const aiImageInput = document.getElementById('aiImageInput');
     const aiImageStatus = document.getElementById('aiImageStatus');
     const removeImageBtn = document.getElementById('removeImageBtn');
     const maxImageBytes = 8 * 1024 * 1024;
+    let assistantInputMode = 'type';
     let activeSpeechUrl = null;
     let speechAbortController = null;
     let speechDoneCallback = null;
@@ -125,6 +135,26 @@
     let monitorDuringCurrentSpeech = true;
     let assistantSpeechText = '';
     let wakeWordPermissionBlocked = false;
+    const youtubePlayers = new Map();
+    const youtubePlayersPending = new Set();
+    const youtubePlayersActive = new Set();
+    let youtubeApiLoading = false;
+    let resumeVoiceAfterYoutube = false;
+
+    const savedVoiceGender = localStorage.getItem('assistantVoiceGender');
+    if (savedVoiceGender === 'male' || savedVoiceGender === 'female') {
+      speechVoiceGender.value = savedVoiceGender;
+    }
+    const savedVoiceStyle = localStorage.getItem('assistantVoiceStyle');
+    if (savedVoiceStyle === 'natural' || savedVoiceStyle === 'playful') {
+      speechVoiceStyle.value = savedVoiceStyle;
+    }
+    speechVoiceGender.addEventListener('change', () => {
+      localStorage.setItem('assistantVoiceGender', speechVoiceGender.value);
+    });
+    speechVoiceStyle.addEventListener('change', () => {
+      localStorage.setItem('assistantVoiceStyle', speechVoiceStyle.value);
+    });
 
     feed.scrollTop = feed.scrollHeight;
 
@@ -211,7 +241,9 @@
             const iframe = document.createElement('iframe');
             iframe.width = '560';
             iframe.height = '315';
-            iframe.src = 'https://www.youtube-nocookie.com/embed/' + encodeURIComponent(m.media_url) + '?autoplay=1&playsinline=1';
+            iframe.className = 'youtube-player';
+            iframe.src = 'https://www.youtube.com/embed/' + encodeURIComponent(m.media_url)
+              + '?enablejsapi=1&origin=' + encodeURIComponent(window.location.origin) + '&autoplay=1&playsinline=1';
             iframe.title = m.title ? 'YouTube video: ' + m.title : 'YouTube video player';
             iframe.referrerPolicy = 'strict-origin-when-cross-origin';
             iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
@@ -223,8 +255,112 @@
       }
 
       feed.appendChild(wrap);
+      registerYouTubePlayers(wrap);
       feed.scrollTop = feed.scrollHeight;
       return wrap;
+    }
+
+    function youtubeBlocksVoice() {
+      return youtubePlayersPending.size > 0 || youtubePlayersActive.size > 0;
+    }
+
+    function pauseVoiceForYoutube() {
+      resumeVoiceAfterYoutube = assistantInputMode === 'voice' && (
+        listening
+        || (isSpeaking && monitorDuringCurrentSpeech)
+        || (wakeWordToggle.checked && !wakeWordPermissionBlocked)
+        || passiveLoopToggle.checked
+      );
+      stopRecognition();
+      voiceStatus.textContent = 'YouTube video loading or playing — voice recognition is paused.';
+    }
+
+    function resumeVoiceAfterYoutubePlayback() {
+      const shouldResume = resumeVoiceAfterYoutube;
+      resumeVoiceAfterYoutube = false;
+      if (!shouldResume || assistantInputMode !== 'voice') {
+        voiceStatus.textContent = 'YouTube paused — voice input is off.';
+        return;
+      }
+      if (isSpeaking && monitorDuringCurrentSpeech) {
+        startListening(true);
+      } else if (wakeWordToggle.checked && !wakeWordPermissionBlocked) {
+        startListening(false, true);
+      } else {
+        startListening();
+      }
+    }
+
+    function setYoutubePlayerState(iframe, state) {
+      const wasBlocked = youtubeBlocksVoice();
+      if (state === window.YT.PlayerState.PLAYING) {
+        youtubePlayersPending.delete(iframe);
+        youtubePlayersActive.add(iframe);
+        youtubePlayers.forEach((player, otherIframe) => {
+          if (otherIframe !== iframe) player.pauseVideo();
+        });
+      } else if (
+        state === window.YT.PlayerState.UNSTARTED
+        || state === window.YT.PlayerState.ENDED
+        || state === window.YT.PlayerState.PAUSED
+        || state === window.YT.PlayerState.CUED
+      ) {
+        youtubePlayersPending.delete(iframe);
+        youtubePlayersActive.delete(iframe);
+      }
+      if (!wasBlocked && youtubeBlocksVoice()) {
+        pauseVoiceForYoutube();
+      } else if (wasBlocked && !youtubeBlocksVoice()) {
+        resumeVoiceAfterYoutubePlayback();
+      }
+    }
+
+    function initializeYouTubePlayers() {
+      if (!window.YT || !window.YT.Player) return;
+      document.querySelectorAll('.youtube-player').forEach((iframe) => {
+        if (youtubePlayers.has(iframe)) return;
+        const player = new window.YT.Player(iframe, {
+          events: {
+            onReady: (event) => {
+              youtubePlayers.set(iframe, event.target);
+              setYoutubePlayerState(iframe, event.target.getPlayerState());
+            },
+            onStateChange: (event) => setYoutubePlayerState(iframe, event.data),
+            onError: () => setYoutubePlayerState(iframe, window.YT.PlayerState.UNSTARTED),
+          },
+        });
+        youtubePlayers.set(iframe, player);
+      });
+    }
+
+    function ensureYouTubePlayerApi() {
+      if (window.YT && window.YT.Player) {
+        initializeYouTubePlayers();
+        return;
+      }
+      if (youtubeApiLoading) return;
+      youtubeApiLoading = true;
+      window.onYouTubeIframeAPIReady = initializeYouTubePlayers;
+      const script = document.createElement('script');
+      script.src = 'https://www.youtube.com/iframe_api';
+      script.async = true;
+      script.onerror = () => {
+        voiceStatus.textContent = 'Could not monitor YouTube playback; voice input is paused to prevent accidental commands.';
+      };
+      document.head.appendChild(script);
+    }
+
+    function registerYouTubePlayers(root) {
+      const frames = root.matches && root.matches('.youtube-player')
+        ? [root]
+        : root.querySelectorAll('.youtube-player');
+      frames.forEach((iframe) => {
+        if (youtubePlayers.has(iframe) || youtubePlayersPending.has(iframe) || youtubePlayersActive.has(iframe)) return;
+        const wasBlocked = youtubeBlocksVoice();
+        youtubePlayersPending.add(iframe);
+        if (!wasBlocked) pauseVoiceForYoutube();
+      });
+      if (frames.length) ensureYouTubePlayerApi();
     }
 
     async function publishLook(imageUrl) {
@@ -238,7 +374,9 @@
       const data = await res.json();
       if (data.ok) {
         voiceStatus.textContent = 'Published "' + title + '" to the live Looks gallery!';
-        speakText('Awesome! I published ' + title + ' right onto your live Happy Toonzz website!');
+        if (assistantInputMode === 'voice' || autoSpeakToggle.checked) {
+          speakText('Awesome! I published ' + title + ' right onto your live Happy Toonzz website!');
+        }
       } else {
         voiceStatus.textContent = 'Publish failed: ' + (data.error || 'unknown error');
       }
@@ -291,19 +429,42 @@
       updateMicButton();
     }
 
+    function speechOutputLanguage(text) {
+      return /[\u0B80-\u0BFF]/.test(text) ? 'ta-IN' : 'en-IN';
+    }
+
+    function findBrowserSpeechVoice(text) {
+      if (!('speechSynthesis' in window)) return null;
+      const lang = speechOutputLanguage(text).toLowerCase();
+      const voices = window.speechSynthesis.getVoices();
+      const preferredName = speechVoiceGender.value === 'male'
+        ? /valluvar|prabhat|male|david|mark|guy/i
+        : /pallavi|neerja|female|zira|susan|heera/i;
+      return voices.find((item) => item.lang.toLowerCase() === lang && preferredName.test(item.name))
+        || voices.find((item) => item.lang.toLowerCase() === lang)
+        || voices.find((item) => item.lang.toLowerCase().startsWith(lang.split('-')[0] + '-'))
+        || null;
+    }
+
+    function setBrowserSpeechDelivery(utterance) {
+      if (speechVoiceStyle.value === 'playful') {
+        utterance.rate = 1.08;
+        utterance.pitch = 1.12;
+      } else {
+        utterance.rate = 1.02;
+        utterance.pitch = 1;
+      }
+    }
+
     function speakWithBrowserVoice(text, generation) {
       if (!('speechSynthesis' in window)) return false;
-      const lang = speechLang.value || 'ta-IN';
-      const prefix = lang.split('-')[0].toLowerCase();
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find((item) => item.lang.toLowerCase() === lang.toLowerCase())
-        || voices.find((item) => item.lang.toLowerCase().startsWith(prefix + '-'));
+      const voice = findBrowserSpeechVoice(text);
       if (!voice) return false;
 
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
+      utterance.lang = voice.lang;
       utterance.voice = voice;
-      utterance.rate = 1;
+      setBrowserSpeechDelivery(utterance);
       utterance.onend = () => finishSpeech(generation);
       utterance.onerror = () => finishSpeech(generation);
       if (monitorDuringCurrentSpeech) startListening(true);
@@ -318,9 +479,13 @@
         return;
       }
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = speechLang.value || 'ta-IN';
-      utterance.rate = 1.04;
-      utterance.pitch = 1.08;
+      utterance.lang = speechOutputLanguage(text);
+      const voice = findBrowserSpeechVoice(text);
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      }
+      setBrowserSpeechDelivery(utterance);
       utterance.onend = () => finishSpeech(generation);
       utterance.onerror = () => finishSpeech(generation);
       if (monitorDuringCurrentSpeech) startListening(true);
@@ -333,18 +498,20 @@
       const generation = speechGeneration;
       speechDoneCallback = onDone;
       isSpeaking = true;
-      monitorDuringCurrentSpeech = monitorForInterrupt;
+      monitorDuringCurrentSpeech = monitorForInterrupt && assistantInputMode === 'voice';
       assistantSpeechText = text;
       updateMicButton();
-      voiceStatus.textContent = 'Speaking — say “iru” or “wait” to interrupt.';
-
-      if (speakWithBrowserVoice(text, generation)) return;
+      voiceStatus.textContent = monitorDuringCurrentSpeech
+        ? 'Speaking — say “iru” or “wait” to interrupt.'
+        : 'Speaking assistant response...';
 
       const controller = new AbortController();
       speechAbortController = controller;
       try {
         const body = new FormData();
         body.append('text', text);
+        body.append('voice_gender', speechVoiceGender.value);
+        body.append('voice_style', speechVoiceStyle.value);
         const res = await fetch('/admin/ai/tts', { method: 'POST', body, signal: controller.signal });
         if (generation !== speechGeneration) return;
         if (res.status === 200) {
@@ -366,6 +533,7 @@
         if (speechAbortController === controller) speechAbortController = null;
         if (generation !== speechGeneration) return;
       }
+      if (speakWithBrowserVoice(text, generation)) return;
       speakWithBrowserFallback(text, generation);
     }
 
@@ -421,11 +589,17 @@
     wakeWordToggle.addEventListener('change', () => {
       wakeWordPermissionBlocked = false;
       if (wakeWordToggle.checked) {
+        if (assistantInputMode !== 'voice') setAssistantInputMode('voice');
         if (!listening && !isSpeaking) startListening(false, true);
       } else if (isWakeWordMonitor) {
         stopRecognition();
         voiceStatus.textContent = 'Wake word off — click Speak whenever you want to talk.';
       }
+    });
+    passiveLoopToggle.addEventListener('change', () => {
+      if (!passiveLoopToggle.checked) return;
+      if (assistantInputMode !== 'voice') setAssistantInputMode('voice', true);
+      else if (!listening && !isSpeaking) startListening(false, wakeWordToggle.checked);
     });
     removeImageBtn.addEventListener('click', () => {
       aiImageInput.value = '';
@@ -522,6 +696,7 @@
         const channelSynced = data.channel ? syncChannelForm(data.channel) : false;
 
         const maybeLoop = () => {
+          if (assistantInputMode !== 'voice') return;
           if (passiveLoopToggle.checked) {
             setTimeout(() => startListening(), 350);
           } else if (wakeWordToggle.checked) {
@@ -529,7 +704,7 @@
           }
         };
 
-        if (autoSpeakToggle.checked || fromVoice) {
+        if (autoSpeakToggle.checked || (assistantInputMode === 'voice' && fromVoice)) {
           speakText(reply, maybeLoop);
           if (channelSynced) {
             voiceStatus.textContent = 'Channel stats synced live & speaking positive response...';
@@ -582,6 +757,14 @@
     }
 
     function startListening(interruptMonitor = false, wakeWordMonitor = false) {
+      if (assistantInputMode !== 'voice') {
+        voiceStatus.textContent = 'Switch to Voice mode to use the microphone.';
+        return;
+      }
+      if (youtubeBlocksVoice()) {
+        voiceStatus.textContent = 'Voice input is paused while YouTube plays. Pause the video to speak.';
+        return;
+      }
       if (!SpeechRec) {
         voiceStatus.textContent = wakeWordMonitor
           ? 'Wake word requires Chrome or Edge speech recognition.'
@@ -657,8 +840,10 @@
 
       activeRecognition.onend = () => {
         if (recognition !== activeRecognition) return;
-        const shouldRestartMonitor = monitoringInterrupts && isInterruptMonitor && isSpeaking;
-        const shouldRestartWakeWord = monitoringWakeWord && isWakeWordMonitor && wakeWordToggle.checked && !wakeWordPermissionBlocked;
+        const shouldRestartMonitor = assistantInputMode === 'voice'
+          && monitoringInterrupts && isInterruptMonitor && isSpeaking;
+        const shouldRestartWakeWord = assistantInputMode === 'voice'
+          && monitoringWakeWord && isWakeWordMonitor && wakeWordToggle.checked && !wakeWordPermissionBlocked;
         recognition = null;
         listening = false;
         micBtn.classList.remove('recording');
@@ -708,6 +893,14 @@
     }
 
     function toggleMic() {
+      if (assistantInputMode !== 'voice') {
+        voiceStatus.textContent = 'Switch to Voice mode to use the microphone.';
+        return;
+      }
+      if (youtubeBlocksVoice()) {
+        voiceStatus.textContent = 'Pause the YouTube video before using voice input.';
+        return;
+      }
       if (isSpeaking) {
         stopSpeech();
         startListening();
@@ -721,5 +914,31 @@
       }
     }
 
-    if (wakeWordToggle.checked) startListening(false, true);
+    function setAssistantInputMode(mode, listenImmediately = false) {
+      assistantInputMode = mode;
+      commandDock.dataset.inputMode = mode;
+      const isTypeMode = mode === 'type';
+      typeModeBtn.classList.toggle('is-active', isTypeMode);
+      typeModeBtn.setAttribute('aria-pressed', String(isTypeMode));
+      voiceModeBtn.classList.toggle('is-active', !isTypeMode);
+      voiceModeBtn.setAttribute('aria-pressed', String(!isTypeMode));
+
+      if (isTypeMode) {
+        stopSpeech();
+        stopRecognition();
+        aiInput.placeholder = 'Enter a command for the AI engine...';
+        voiceStatus.textContent = 'Type mode — enter a message.';
+        return;
+      }
+
+      aiInput.placeholder = 'Your spoken words will appear here...';
+      voiceStatus.textContent = 'Voice mode — click Speak to talk.';
+      if (listenImmediately) startListening(false, wakeWordToggle.checked);
+    }
+
+    typeModeBtn.addEventListener('click', () => setAssistantInputMode('type'));
+    voiceModeBtn.addEventListener('click', () => setAssistantInputMode('voice', true));
+
+    registerYouTubePlayers(feed);
+    if (assistantInputMode === 'voice' && wakeWordToggle.checked) startListening(false, true);
   </script>

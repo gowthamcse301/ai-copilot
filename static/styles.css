@@ -122,9 +122,10 @@ button, a, input, textarea, select { font-family: inherit; }
   color: var(--ink-muted);
   font-weight: 700;
   font-size: 0.9rem;
-  padding: 8px 13px;
+  padding: 8px;
   border-radius: var(--radius-pill);
   transition: background 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
 }
 
 .nav-links a:hover { background: var(--pink-soft); color: var(--ink); }
@@ -133,7 +134,17 @@ button, a, input, textarea, select { font-family: inherit; }
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+.nav-actions > form {
+  display: flex;
+  margin: 0;
+}
+
+.nav-actions .btn {
+  padding: 8px 14px;
+  white-space: nowrap;
 }
 
 .user-chip {
@@ -143,11 +154,12 @@ button, a, input, textarea, select { font-family: inherit; }
   background: var(--purple-soft);
   color: var(--ink);
   border: 1.5px solid #dccbff;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: var(--radius-pill);
   font-size: 0.84rem;
   font-weight: 800;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 /* Buttons */
@@ -383,6 +395,48 @@ section { padding: 34px 0; }
 .platform-fb { background: #e3f2ff; color: #1964b5; }
 
 .social-card h3 { font-family: var(--font-display); font-size: 1.25rem; }
+
+.social-embeds-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 20px 0 24px;
+}
+
+.instagram-profile-panel,
+.youtube-playlist-panel {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  margin: 0;
+  padding: clamp(16px, 3vw, 26px);
+  border: 2px solid var(--border);
+  border-radius: 26px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.youtube-playlist-panel { align-content: space-between; }
+
+.instagram-profile-heading,
+.youtube-playlist-heading { text-align: center; }
+.instagram-profile-heading h3,
+.youtube-playlist-heading h3 { margin-top: 4px; font-family: var(--font-display); }
+.instagram-profile-embed { width: min(100%, 540px); }
+.instagram-profile-embed .instagram-media {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+}
+.youtube-playlist-embed { width: 100%; }
+.youtube-playlist-embed iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 14px;
+}
+.youtube-playlist-embed p { text-align: center; color: var(--ink-muted); }
 
 .social-metrics {
   display: grid;
@@ -816,13 +870,17 @@ footer { padding: 28px 0 44px; text-align: center; color: var(--ink-muted); font
 
 @media (max-width: 860px) {
   .hero-grid, .form-grid { grid-template-columns: 1fr; }
+  .social-embeds-grid { grid-template-columns: 1fr; }
+  .navbar { flex-wrap: wrap; }
   .nav-links { display: none; }
+  .nav-actions { margin-left: auto; }
   .modal-content.compare-mode { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
   .looks-grid, .pillars-grid { grid-template-columns: 1fr; }
   .palette-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nav-actions { flex-wrap: wrap; justify-content: flex-end; }
   .hero-stats { grid-template-columns: repeat(3, 1fr); }
 }
 
@@ -1211,8 +1269,40 @@ footer { padding: 28px 0 44px; text-align: center; color: var(--ink-muted); font
 }
 
 .assistant-command-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: 0 2px 8px;
 }
+
+.assistant-input-modes {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #e8e1f1;
+  border-radius: 10px;
+  background: #f5f1fa;
+}
+
+.assistant-input-mode {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 7px;
+  color: #806d91;
+  background: transparent;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.assistant-input-mode.is-active {
+  color: #62428f;
+  background: #fff;
+  box-shadow: 0 1px 5px rgba(62, 47, 79, 0.1);
+}
+
+.assistant-page .assistant-command-dock[data-input-mode="type"] #micBtn { display: none; }
 
 .assistant-page .ai-input-bar {
   display: grid;
@@ -1325,10 +1415,6 @@ footer { padding: 28px 0 44px; text-align: center; color: var(--ink-muted); font
 
   .assistant-console {
     padding: 16px 12px;
-  }
-
-  .assistant-command-heading span:last-child {
-    font-size: 0.5rem;
   }
 
   .assistant-composer-main {

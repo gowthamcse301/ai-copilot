@@ -9,15 +9,15 @@
       <div class="assistant-settings-label">VOICE &amp; INPUT</div>
       <label class="assistant-setting-row">
         <span><strong>Auto voice reply</strong><small>Speak replies automatically</small></span>
-        <input type="checkbox" id="autoSpeakToggle" checked />
+        <input type="checkbox" id="autoSpeakToggle" />
       </label>
       <label class="assistant-setting-row">
         <span><strong>Wake word</strong><small>Start listening when you say “Hi”</small></span>
-        <input type="checkbox" id="wakeWordToggle" checked />
+        <input type="checkbox" id="wakeWordToggle" />
       </label>
       <label class="assistant-setting-row">
         <span><strong>Hands-free loop</strong><small>Keep listening after each reply</small></span>
-        <input type="checkbox" id="passiveLoopToggle" checked />
+        <input type="checkbox" id="passiveLoopToggle" />
       </label>
       <label class="assistant-setting-select">
         <span>Voice input language</span>
@@ -25,6 +25,20 @@
           <option value="en-IN">English (India)</option>
           <option value="ta-IN" selected>Tamil (தமிழ்)</option>
           <option value="en-US">English (US)</option>
+        </select>
+      </label>
+      <label class="assistant-setting-select">
+        <span>Spoken voice</span>
+        <select id="speechVoiceGender" class="lang-select" aria-label="Spoken voice">
+          <option value="female" selected>Female</option>
+          <option value="male">Male</option>
+        </select>
+      </label>
+      <label class="assistant-setting-select">
+        <span>Voice style</span>
+        <select id="speechVoiceStyle" class="lang-select" aria-label="Spoken voice style">
+          <option value="natural" selected>Natural</option>
+          <option value="playful">Playful character (original)</option>
         </select>
       </label>
     </div>
